@@ -77,7 +77,7 @@ export function createDefaultYearData(year: number, defaultRent: number = 1000):
       paidRent: false,
       paidServices: false,
     };
-    const { electricityTenantShare, servicesTotal, total } = calculateMonthValues(
+    const { electricityTenantShare, waterTenantShare, servicesTotal, total } = calculateMonthValues(
       defaultRent,
       preset.luz,
       preset.agua
@@ -91,6 +91,7 @@ export function createDefaultYearData(year: number, defaultRent: number = 1000):
       electricityTotal: preset.luz,
       electricityTenantShare,
       water: preset.agua,
+      waterTenantShare,
       servicesTotal,
       total,
       paid: preset.paidRent && preset.paidServices,

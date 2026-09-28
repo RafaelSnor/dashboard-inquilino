@@ -5,8 +5,9 @@ export interface MonthRecord {
   baseRent: number; // Alquiler fijo
   electricityTotal: number; // Recibo de luz 100%
   electricityTenantShare: number; // 50% del recibo de luz (auto-calculado)
-  water: number; // Recibo de agua
-  servicesTotal: number; // Luz Inquilino 50% + Agua (auto-calculado)
+  water: number; // Recibo de agua 100%
+  waterTenantShare?: number; // 50% del recibo de agua (auto-calculado)
+  servicesTotal: number; // Luz Inquilino 50% + Agua Inquilino 50% (auto-calculado)
   total: number; // Alquiler + Servicios (auto-calculado)
   paid: boolean; // Estado general / alquiler
   paidRent: boolean; // ¿Alquiler pagado?

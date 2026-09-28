@@ -14,7 +14,14 @@ import {
   Home,
 } from "lucide-react";
 import { MonthRecord } from "@/lib/types";
-import { formatCurrency, cn } from "@/lib/utils";
+import {
+  formatCurrency,
+  cn,
+  getMonthElectricityShare,
+  getMonthWaterShare,
+  getMonthServicesTotal,
+  getMonthTotal,
+} from "@/lib/utils";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 
@@ -44,15 +51,15 @@ export function TenantCompactView({
   const paidServicesRecords = records.filter((r) => r.paidServices ?? r.paid);
   const pendingServicesRecords = records.filter((r) => !(r.paidServices ?? r.paid));
 
-  const totalRentPaid = paidRentRecords.reduce((sum, r) => sum + r.baseRent, 0);
-  const totalRentPending = pendingRentRecords.reduce((sum, r) => sum + r.baseRent, 0);
+  const totalRentPaid = paidRentRecords.reduce((sum, r) => sum + (Number(r.baseRent) || 0), 0);
+  const totalRentPending = pendingRentRecords.reduce((sum, r) => sum + (Number(r.baseRent) || 0), 0);
 
   const totalServicesPaid = paidServicesRecords.reduce(
-    (sum, r) => sum + (r.servicesTotal ?? r.electricityTenantShare + r.water),
+    (sum, r) => sum + getMonthServicesTotal(r),
     0
   );
   const totalServicesPending = pendingServicesRecords.reduce(
-    (sum, r) => sum + (r.servicesTotal ?? r.electricityTenantShare + r.water),
+    (sum, r) => sum + getMonthServicesTotal(r),
     0
   );
 
@@ -71,7 +78,7 @@ export function TenantCompactView({
         ? `• Pendiente alquiler: ${formatCurrency(totalRentPending)} (${pendingRentNames})`
         : `• Alquiler: ¡Todo al día! ✅`,
       `━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-      `⚡ *SERVICIOS (Luz 50% + Agua):*`,
+      `⚡ *SERVICIOS (Luz 50% + Agua 50%):*`,
       `• Pagado en servicios: ${formatCurrency(totalServicesPaid)}`,
       pendingServicesRecords.length > 0
         ? `• Pendiente servicios: ${formatCurrency(totalServicesPending)} (${pendingServicesNames})`
@@ -240,7 +247,7 @@ export function TenantCompactView({
                 Liquidación de Servicios (Luz y Agua)
               </h3>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Prorrateo pactado del 50% de luz + consumo directo de agua
+                Prorrateo pactado del 50% de luz y 50% de agua
               </p>
             </div>
           </div>
@@ -272,7 +279,13 @@ export function TenantCompactView({
                 <th className="py-2 px-3 min-w-[100px]">
                   <div className="flex items-center gap-1">
                     <Droplets className="h-3 w-3 text-blue-500" />
-                    <span>Agua</span>
+                    <span>Agua 100%</span>
+                  </div>
+                </th>
+                <th className="py-2 px-3 min-w-[120px]">
+                  <div className="flex items-center gap-1">
+                    <Droplets className="h-3 w-3 text-cyan-500" />
+                    <span>Cuota Agua (50%)</span>
                   </div>
                 </th>
                 <th className="py-2 px-3 min-w-[120px] text-right font-black">
@@ -286,8 +299,9 @@ export function TenantCompactView({
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {records.map((r) => {
                 const isServicesPaid = r.paidServices ?? r.paid;
-                const servicesTotal =
-                  r.servicesTotal ?? r.electricityTenantShare + r.water;
+                const elecShare = getMonthElectricityShare(r);
+                const waterShare = getMonthWaterShare(r);
+                const servicesTotal = getMonthServicesTotal(r);
 
                 return (
                   <tr
@@ -312,13 +326,20 @@ export function TenantCompactView({
                     {/* Cuota Luz 50% */}
                     <td className="py-2 px-3">
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-sky-50 text-sky-800 border border-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800">
-                        {formatCurrency(r.electricityTenantShare)}
+                        {formatCurrency(elecShare)}
                       </span>
                     </td>
 
-                    {/* Agua */}
+                    {/* Agua 100% */}
                     <td className="py-2 px-3 text-slate-600 dark:text-slate-300">
                       {formatCurrency(r.water)}
+                    </td>
+
+                    {/* Cuota Agua 50% */}
+                    <td className="py-2 px-3">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-cyan-50 text-cyan-800 border border-cyan-200 dark:bg-cyan-950/60 dark:text-cyan-300 dark:border-cyan-800">
+                        {formatCurrency(waterShare)}
+                      </span>
                     </td>
 
                     {/* Total Servicios a pagar */}
@@ -359,28 +380,27 @@ export function TenantCompactView({
                 </td>
                 <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">
                   {formatCurrency(
-                    records.reduce((sum, r) => sum + r.electricityTotal, 0)
+                    records.reduce((sum, r) => sum + (Number(r.electricityTotal) || 0), 0)
                   )}
                 </td>
                 <td className="py-2.5 px-3 text-sky-700 dark:text-sky-300">
                   {formatCurrency(
-                    records.reduce((sum, r) => sum + r.electricityTenantShare, 0)
+                    records.reduce((sum, r) => sum + getMonthElectricityShare(r), 0)
                   )}
                 </td>
                 <td className="py-2.5 px-3 text-blue-700 dark:text-blue-300">
                   {formatCurrency(
-                    records.reduce((sum, r) => sum + r.water, 0)
+                    records.reduce((sum, r) => sum + (Number(r.water) || 0), 0)
+                  )}
+                </td>
+                <td className="py-2.5 px-3 text-cyan-700 dark:text-cyan-300">
+                  {formatCurrency(
+                    records.reduce((sum, r) => sum + getMonthWaterShare(r), 0)
                   )}
                 </td>
                 <td className="py-2.5 px-3 text-right font-extrabold text-slate-900 dark:text-white">
                   {formatCurrency(
-                    records.reduce(
-                      (sum, r) =>
-                        sum +
-                        (r.servicesTotal ??
-                          r.electricityTenantShare + r.water),
-                      0
-                    )
+                    records.reduce((sum, r) => sum + getMonthServicesTotal(r), 0)
                   )}
                 </td>
                 <td className="py-2.5 px-3 text-center text-[10px] text-slate-500 dark:text-slate-400">

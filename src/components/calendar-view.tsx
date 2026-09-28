@@ -3,7 +3,13 @@
 import React from "react";
 import { Check, CalendarDays, Zap, Droplets, Home } from "lucide-react";
 import { MonthRecord } from "@/lib/types";
-import { formatCurrency, cn } from "@/lib/utils";
+import {
+  formatCurrency,
+  cn,
+  getMonthElectricityShare,
+  getMonthWaterShare,
+  getMonthTotal,
+} from "@/lib/utils";
 import { Badge } from "./ui/badge";
 
 interface CalendarViewProps {
@@ -98,7 +104,7 @@ export function CalendarView({
                       : "text-slate-900 dark:text-white"
                   )}
                 >
-                  {formatCurrency(month.total)}
+                  {formatCurrency(getMonthTotal(month))}
                 </span>
               </div>
 
@@ -130,24 +136,42 @@ export function CalendarView({
                   </div>
                 </div>
 
+                {/* Luz: Total y 50% Inquilino */}
                 <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
                   <span className="flex items-center gap-1.5 text-[11px]">
-                    <Zap className="h-3 w-3 text-sky-500" />
-                    Luz (50%):
+                    <Zap className="h-3 w-3 text-amber-500" />
+                    Luz Total:
                   </span>
-                  <span className="font-semibold text-sky-700 dark:text-sky-300">
-                    {formatCurrency(month.electricityTenantShare)}
+                  <span className="text-slate-600 dark:text-slate-300 font-medium text-[11px]">
+                    {formatCurrency(month.electricityTotal)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 pl-4.5 -mt-0.5">
+                  <span className="text-[10px] text-sky-600 dark:text-sky-400 font-medium">
+                    ↳ Inquilino (50%):
+                  </span>
+                  <span className="font-semibold text-sky-700 dark:text-sky-300 text-[11px]">
+                    {formatCurrency(getMonthElectricityShare(month))}
                   </span>
                 </div>
 
+                {/* Agua: Total y 50% Inquilino */}
                 <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
                   <span className="flex items-center gap-1.5 text-[11px]">
                     <Droplets className="h-3 w-3 text-blue-500" />
-                    Agua:
+                    Agua Total:
+                  </span>
+                  <span className="text-slate-600 dark:text-slate-300 font-medium text-[11px]">
+                    {formatCurrency(month.water)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-slate-600 dark:text-slate-400 pl-4.5 -mt-0.5">
+                  <span className="text-[10px] text-cyan-600 dark:text-cyan-400 font-medium">
+                    ↳ Inquilino (50%):
                   </span>
                   <div className="flex items-center gap-1.5">
-                    <span className="font-semibold text-slate-800 dark:text-slate-200">
-                      {formatCurrency(month.water)}
+                    <span className="font-semibold text-cyan-700 dark:text-cyan-300 text-[11px]">
+                      {formatCurrency(getMonthWaterShare(month))}
                     </span>
                     <button
                       onClick={(e) => {

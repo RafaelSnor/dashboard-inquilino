@@ -170,9 +170,9 @@ export function Header({
                 variant={hasUnsavedChanges ? "emerald" : "outline"}
                 disabled={isSaving}
                 onClick={onSaveChanges}
-                className={`gap-1.5 h-8 px-3 text-xs font-bold transition-all shadow-sm ${
+                className={`gap-1.5 h-8 px-3 text-xs font-bold transition-colors shadow-sm ${
                   hasUnsavedChanges
-                    ? "ring-2 ring-emerald-500/50 animate-bounce duration-1000"
+                    ? "ring-2 ring-emerald-500/50 shadow-md font-extrabold"
                     : "border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
                 }`}
                 title="Guarda los cambios para que persistan para el inquilino y otros usuarios"

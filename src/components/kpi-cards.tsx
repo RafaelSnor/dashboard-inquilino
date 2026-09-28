@@ -12,7 +12,7 @@ import {
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, getMonthServicesTotal, getMonthTotal } from "@/lib/utils";
 import { MonthRecord } from "@/lib/types";
 
 interface KpiCardsProps {
@@ -38,14 +38,12 @@ export function KpiCards({
 
   // Calculations taking into account that rent and services can be paid separately
   const totalCollected = records.reduce((sum, r) => {
-    const rentPaid = (r.paidRent ?? r.paid) ? r.baseRent : 0;
-    const servicesPaid = (r.paidServices ?? r.paid)
-      ? (r.servicesTotal ?? r.electricityTenantShare + r.water)
-      : 0;
+    const rentPaid = (r.paidRent ?? r.paid) ? (Number(r.baseRent) || 0) : 0;
+    const servicesPaid = (r.paidServices ?? r.paid) ? getMonthServicesTotal(r) : 0;
     return sum + rentPaid + servicesPaid;
   }, 0);
 
-  const totalYearProjected = records.reduce((sum, r) => sum + r.total, 0);
+  const totalYearProjected = records.reduce((sum, r) => sum + getMonthTotal(r), 0);
   const totalPending = Math.max(0, totalYearProjected - totalCollected);
 
   const fullyPaidMonthsCount = records.filter(
@@ -206,13 +204,13 @@ export function KpiCards({
         </CardContent>
       </Card>
 
-      {/* 4. Cuota Luz Inquilino */}
+      {/* 4. Cuota Servicios Inquilino (Luz y Agua 50%) */}
       <Card className="relative overflow-hidden border-slate-200/90 shadow-sm hover:shadow-md transition-shadow dark:border-slate-800">
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-sky-400 to-cyan-500" />
         <CardContent className="p-5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              Cuota Luz Inquilino
+              Prorrateo Servicios
             </span>
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400">
               <Zap className="h-5 w-5" />
@@ -223,15 +221,15 @@ export function KpiCards({
               50%
             </div>
             <span className="text-xs font-medium text-sky-600 dark:text-sky-400">
-              Regla Fija
+              Luz y Agua
             </span>
           </div>
           <div className="mt-3 flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800/80">
             <Badge variant="sky" className="gap-1 px-2 py-0.5 text-[11px]">
               Prorrateo 50/50
             </Badge>
-            <span className="text-[11px] text-slate-400 dark:text-slate-500" title="El total del recibo de luz se divide exactamente a la mitad">
-              Luz Total × 0.50
+            <span className="text-[11px] text-slate-400 dark:text-slate-500" title="Tanto el recibo de luz como el de agua se dividen al 50%">
+              Luz 50% + Agua 50%
             </span>
           </div>
         </CardContent>

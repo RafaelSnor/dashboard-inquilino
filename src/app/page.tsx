@@ -8,7 +8,7 @@ import { BreakdownTable } from "@/components/breakdown-table";
 import { TenantCompactView } from "@/components/tenant-compact-view";
 import { StorageState, YearData } from "@/lib/types";
 import { getDefaultDashboardState, createDefaultYearData } from "@/lib/initial-data";
-import { calculateMonthValues, exportToCSV } from "@/lib/utils";
+import { calculateMonthValues, exportToCSV, syncStorageStateWithBaseRent } from "@/lib/utils";
 import { CheckCircle, Sparkles, Eye, Save, AlertTriangle, RotateCcw, Cloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -38,11 +38,12 @@ export default function DashboardPage() {
       if (res.ok) {
         const json = await res.json();
         if (json.success && json.data) {
-          setData(json.data);
-          lastServerDataRef.current = json.data;
+          const syncedData = syncStorageStateWithBaseRent(json.data);
+          setData(syncedData);
+          lastServerDataRef.current = syncedData;
           setStorageType(json.storage || "local_json");
           try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(json.data));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(syncedData));
           } catch {}
           setSyncStatus("saved");
           setHasUnsavedChanges(false);
@@ -58,8 +59,9 @@ export default function DashboardPage() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (typeof parsed === "object" && parsed !== null) {
-          setData(parsed);
-          lastServerDataRef.current = parsed;
+          const syncedData = syncStorageStateWithBaseRent(parsed);
+          setData(syncedData);
+          lastServerDataRef.current = syncedData;
         }
       }
     } catch {}
@@ -193,7 +195,7 @@ export default function DashboardPage() {
         newPaidServices = value as boolean;
       }
 
-      const { electricityTenantShare, servicesTotal, total } =
+      const { electricityTenantShare, waterTenantShare, servicesTotal, total } =
         calculateMonthValues(newBaseRent, newLuz, newAgua);
 
       return {
@@ -202,6 +204,7 @@ export default function DashboardPage() {
         electricityTotal: newLuz,
         electricityTenantShare,
         water: newAgua,
+        waterTenantShare,
         servicesTotal,
         total,
         paid: newPaidRent && newPaidServices,
@@ -261,9 +264,23 @@ export default function DashboardPage() {
   };
 
   const handleUpdateBaseRent = (newRent: number) => {
+    const updatedRecords = currentYearData.records.map((r) => {
+      const { electricityTenantShare, waterTenantShare, servicesTotal, total } =
+        calculateMonthValues(newRent, r.electricityTotal, r.water);
+      return {
+        ...r,
+        baseRent: newRent,
+        electricityTenantShare,
+        waterTenantShare,
+        servicesTotal,
+        total,
+      };
+    });
+
     const updatedYearData: YearData = {
       ...currentYearData,
       baseRent: newRent,
+      records: updatedRecords,
     };
 
     updateLocalData({
@@ -275,12 +292,13 @@ export default function DashboardPage() {
 
   const handleApplyBaseRentToAll = (newRent: number) => {
     const updatedRecords = currentYearData.records.map((r) => {
-      const { electricityTenantShare, servicesTotal, total } =
+      const { electricityTenantShare, waterTenantShare, servicesTotal, total } =
         calculateMonthValues(newRent, r.electricityTotal, r.water);
       return {
         ...r,
         baseRent: newRent,
         electricityTenantShare,
+        waterTenantShare,
         servicesTotal,
         total,
       };
@@ -486,6 +504,7 @@ export default function DashboardPage() {
             <section aria-label="Tabla de Desglose">
               <BreakdownTable
                 records={currentYearData.records}
+                baseRent={currentYearData.baseRent}
                 onUpdateRecord={handleUpdateRecord}
               />
             </section>

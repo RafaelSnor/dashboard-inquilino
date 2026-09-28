@@ -3,12 +3,20 @@
 import React from "react";
 import { Table, Zap, Droplets, Home, CheckCircle2, Clock } from "lucide-react";
 import { MonthRecord } from "@/lib/types";
-import { formatCurrency, cn } from "@/lib/utils";
+import {
+  formatCurrency,
+  cn,
+  getMonthElectricityShare,
+  getMonthWaterShare,
+  getMonthServicesTotal,
+  getMonthTotal,
+} from "@/lib/utils";
 import { Checkbox } from "./ui/checkbox";
 import { Badge } from "./ui/badge";
 
 interface BreakdownTableProps {
   records: MonthRecord[];
+  baseRent?: number;
   onUpdateRecord: (
     id: number,
     field: "baseRent" | "electricityTotal" | "water" | "paid" | "paidRent" | "paidServices",
@@ -18,24 +26,21 @@ interface BreakdownTableProps {
 
 export function BreakdownTable({
   records,
+  baseRent,
   onUpdateRecord,
 }: BreakdownTableProps) {
   // Totals calculations for the footer
-  const totalAlquiler = records.reduce((sum, r) => sum + r.baseRent, 0);
-  const totalLuz100 = records.reduce((sum, r) => sum + r.electricityTotal, 0);
-  const totalLuz50 = records.reduce((sum, r) => sum + r.electricityTenantShare, 0);
-  const totalAgua = records.reduce((sum, r) => sum + r.water, 0);
-  const totalServicios = records.reduce(
-    (sum, r) => sum + (r.servicesTotal ?? r.electricityTenantShare + r.water),
-    0
-  );
-  const grandTotal = records.reduce((sum, r) => sum + r.total, 0);
+  const totalAlquiler = records.reduce((sum, r) => sum + (Number(r.baseRent) || 0), 0);
+  const totalLuz100 = records.reduce((sum, r) => sum + (Number(r.electricityTotal) || 0), 0);
+  const totalLuz50 = records.reduce((sum, r) => sum + getMonthElectricityShare(r), 0);
+  const totalAgua100 = records.reduce((sum, r) => sum + (Number(r.water) || 0), 0);
+  const totalAgua50 = records.reduce((sum, r) => sum + getMonthWaterShare(r), 0);
+  const totalServicios = records.reduce((sum, r) => sum + getMonthServicesTotal(r), 0);
+  const grandTotal = records.reduce((sum, r) => sum + getMonthTotal(r), 0);
 
   const totalPaidAmount = records.reduce((sum, r) => {
-    const rentAmount = (r.paidRent ?? r.paid) ? r.baseRent : 0;
-    const servAmount = (r.paidServices ?? r.paid)
-      ? (r.servicesTotal ?? r.electricityTenantShare + r.water)
-      : 0;
+    const rentAmount = (r.paidRent ?? r.paid) ? (Number(r.baseRent) || 0) : 0;
+    const servAmount = (r.paidServices ?? r.paid) ? getMonthServicesTotal(r) : 0;
     return sum + rentAmount + servAmount;
   }, 0);
 
@@ -73,6 +78,11 @@ export function BreakdownTable({
                 <div className="flex items-center gap-1.5">
                   <Home className="h-3.5 w-3.5 text-slate-400" />
                   <span>Alquiler Fijo</span>
+                  {baseRent !== undefined && baseRent > 0 && (
+                    <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 lowercase">
+                      ({formatCurrency(baseRent)})
+                    </span>
+                  )}
                 </div>
               </th>
               <th scope="col" className="py-3.5 px-3 min-w-[130px] text-center">
@@ -93,7 +103,13 @@ export function BreakdownTable({
               <th scope="col" className="py-3.5 px-4 min-w-[120px]">
                 <div className="flex items-center gap-1.5">
                   <Droplets className="h-3.5 w-3.5 text-blue-500" />
-                  <span>Agua</span>
+                  <span>Agua 100%</span>
+                </div>
+              </th>
+              <th scope="col" className="py-3.5 px-4 min-w-[140px]">
+                <div className="flex items-center gap-1.5">
+                  <Droplets className="h-3.5 w-3.5 text-cyan-500" />
+                  <span>Agua Inquilino 50%</span>
                 </div>
               </th>
               <th scope="col" className="py-3.5 px-4 min-w-[130px]">
@@ -112,8 +128,10 @@ export function BreakdownTable({
               const isRentPaid = r.paidRent ?? r.paid;
               const isServicesPaid = r.paidServices ?? r.paid;
               const isAllPaid = isRentPaid && isServicesPaid;
-              const servicesSubtotal =
-                r.servicesTotal ?? r.electricityTenantShare + r.water;
+              const electricityTenantShare = getMonthElectricityShare(r);
+              const waterTenantShare = getMonthWaterShare(r);
+              const servicesSubtotal = getMonthServicesTotal(r);
+              const monthTotal = getMonthTotal(r);
 
               return (
                 <tr
@@ -156,8 +174,18 @@ export function BreakdownTable({
                         type="number"
                         step="0.01"
                         min="0"
-                        value={r.baseRent === 0 ? "" : r.baseRent}
-                        placeholder="0.00"
+                        value={
+                          r.baseRent === 0
+                            ? baseRent !== undefined && baseRent > 0
+                              ? baseRent
+                              : ""
+                            : r.baseRent
+                        }
+                        placeholder={
+                          baseRent !== undefined && baseRent > 0
+                            ? baseRent.toFixed(2)
+                            : "0.00"
+                        }
                         onChange={(e) => {
                           const val = parseFloat(e.target.value) || 0;
                           onUpdateRecord(r.id, "baseRent", Math.max(0, val));
@@ -212,11 +240,11 @@ export function BreakdownTable({
                   {/* Luz Inquilino 50% (Auto-calculado) */}
                   <td className="py-3 px-4">
                     <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-100 text-sky-800 border border-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800">
-                      {formatCurrency(r.electricityTenantShare)}
+                      {formatCurrency(electricityTenantShare)}
                     </div>
                   </td>
 
-                  {/* Recibo Agua (Editable) */}
+                  {/* Recibo Agua 100% (Editable) */}
                   <td className="py-3 px-4">
                     <div className="relative flex items-center max-w-[115px]">
                       <span className="absolute left-2.5 text-xs font-bold text-slate-400 select-none">
@@ -234,6 +262,13 @@ export function BreakdownTable({
                         }}
                         className="h-8 w-full rounded-md border border-slate-200 bg-white pl-7 pr-2 py-1 text-xs font-medium text-slate-800 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                       />
+                    </div>
+                  </td>
+
+                  {/* Agua Inquilino 50% (Auto-calculado) */}
+                  <td className="py-3 px-4">
+                    <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-cyan-100 text-cyan-800 border border-cyan-200 dark:bg-cyan-950/60 dark:text-cyan-300 dark:border-cyan-800">
+                      {formatCurrency(waterTenantShare)}
                     </div>
                   </td>
 
@@ -273,7 +308,7 @@ export function BreakdownTable({
                           : "text-slate-900 dark:text-white"
                       )}
                     >
-                      {formatCurrency(r.total)}
+                      {formatCurrency(monthTotal)}
                     </span>
                   </td>
                 </tr>
@@ -299,7 +334,10 @@ export function BreakdownTable({
                 {formatCurrency(totalLuz50)}
               </td>
               <td className="py-3.5 px-4 text-xs font-bold text-blue-700 dark:text-blue-300">
-                {formatCurrency(totalAgua)}
+                {formatCurrency(totalAgua100)}
+              </td>
+              <td className="py-3.5 px-4 text-xs font-bold text-cyan-700 dark:text-cyan-300">
+                {formatCurrency(totalAgua50)}
               </td>
               <td className="py-3.5 px-4 text-xs font-bold text-slate-800 dark:text-slate-200">
                 {formatCurrency(totalServicios)}

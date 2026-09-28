@@ -3,6 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 import { StorageState } from "@/lib/types";
 import { getDefaultDashboardState } from "@/lib/initial-data";
+import { syncStorageStateWithBaseRent } from "@/lib/utils";
 import { getRedisClient, STORAGE_KEY } from "@/lib/kv";
 
 export const dynamic = "force-dynamic";
@@ -46,8 +47,9 @@ export async function GET() {
       try {
         const cloudData = await redis.get<StorageState>(STORAGE_KEY);
         if (cloudData && typeof cloudData === "object") {
+          const synced = syncStorageStateWithBaseRent(cloudData);
           return NextResponse.json(
-            { success: true, data: cloudData, storage: "cloud_kv" },
+            { success: true, data: synced, storage: "cloud_kv" },
             { headers }
           );
         }
@@ -66,10 +68,11 @@ export async function GET() {
 
     // 2. Local JSON file fallback
     const localData = await getLocalFile();
+    const synced = syncStorageStateWithBaseRent(localData);
     return NextResponse.json(
       {
         success: true,
-        data: localData,
+        data: synced,
         storage: process.env.VERCEL ? "unconfigured_cloud" : "local_json",
       },
       { headers }
@@ -100,11 +103,13 @@ export async function POST(request: Request) {
       );
     }
 
+    const syncedPayload = syncStorageStateWithBaseRent(payload as StorageState);
+
     const redis = getRedisClient();
 
     // 1. If Cloud KV is configured, save in Cloud for all users
     if (redis) {
-      await redis.set(STORAGE_KEY, payload);
+      await redis.set(STORAGE_KEY, syncedPayload);
       return NextResponse.json(
         {
           success: true,
@@ -130,7 +135,7 @@ export async function POST(request: Request) {
 
     // 3. If running locally, save to data/payments.json
     await fs.mkdir(DATA_DIR, { recursive: true });
-    await fs.writeFile(DATA_FILE, JSON.stringify(payload, null, 2), "utf-8");
+    await fs.writeFile(DATA_FILE, JSON.stringify(syncedPayload, null, 2), "utf-8");
 
     return NextResponse.json(
       {

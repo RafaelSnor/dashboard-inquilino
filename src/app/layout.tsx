@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Control de Pagos de Inquilino | SaaS Dashboard",
   description:
-    "Gestión integral de alquiler mensual, prorrateo de servicios de luz (50%) y agua, y seguimiento de cobranza.",
+    "Gestión integral de alquiler mensual, prorrateo de servicios de luz (50%) y agua (50%), y seguimiento de cobranza.",
 };
 
 export default function RootLayout({
