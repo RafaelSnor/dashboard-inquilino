@@ -9,7 +9,7 @@ import { TenantCompactView } from "@/components/tenant-compact-view";
 import { StorageState, YearData } from "@/lib/types";
 import { getDefaultDashboardState, createDefaultYearData } from "@/lib/initial-data";
 import { calculateMonthValues, exportToCSV } from "@/lib/utils";
-import { CheckCircle, Sparkles, Eye, LayoutDashboard } from "lucide-react";
+import { CheckCircle, Sparkles, Eye } from "lucide-react";
 
 const STORAGE_KEY = "dashboard_inquilino_state_v1";
 const AVAILABLE_YEARS = [2025, 2026, 2027];
@@ -61,7 +61,13 @@ export default function DashboardPage() {
   // Handlers
   const handleUpdateRecord = (
     id: number,
-    field: "baseRent" | "electricityTotal" | "water" | "paid",
+    field:
+      | "baseRent"
+      | "electricityTotal"
+      | "water"
+      | "paid"
+      | "paidRent"
+      | "paidServices",
     value: number | boolean
   ) => {
     const updatedRecords = currentYearData.records.map((r) => {
@@ -71,13 +77,21 @@ export default function DashboardPage() {
       const newLuz =
         field === "electricityTotal" ? (value as number) : r.electricityTotal;
       const newAgua = field === "water" ? (value as number) : r.water;
-      const newPaid = field === "paid" ? (value as boolean) : r.paid;
 
-      const { electricityTenantShare, total } = calculateMonthValues(
-        newBaseRent,
-        newLuz,
-        newAgua
-      );
+      let newPaidRent = r.paidRent ?? r.paid;
+      let newPaidServices = r.paidServices ?? r.paid;
+
+      if (field === "paidRent") {
+        newPaidRent = value as boolean;
+      } else if (field === "paidServices") {
+        newPaidServices = value as boolean;
+      } else if (field === "paid") {
+        newPaidRent = value as boolean;
+        newPaidServices = value as boolean;
+      }
+
+      const { electricityTenantShare, servicesTotal, total } =
+        calculateMonthValues(newBaseRent, newLuz, newAgua);
 
       return {
         ...r,
@@ -85,8 +99,11 @@ export default function DashboardPage() {
         electricityTotal: newLuz,
         electricityTenantShare,
         water: newAgua,
+        servicesTotal,
         total,
-        paid: newPaid,
+        paid: newPaidRent && newPaidServices,
+        paidRent: newPaidRent,
+        paidServices: newPaidServices,
       };
     });
 
@@ -104,12 +121,39 @@ export default function DashboardPage() {
   const handleTogglePaid = (id: number) => {
     const targetMonth = currentYearData.records.find((r) => r.id === id);
     if (!targetMonth) return;
+    const isCurrentlyAllPaid =
+      (targetMonth.paidRent ?? targetMonth.paid) &&
+      (targetMonth.paidServices ?? targetMonth.paid);
 
-    handleUpdateRecord(id, "paid", !targetMonth.paid);
+    handleUpdateRecord(id, "paid", !isCurrentlyAllPaid);
     showToast(
-      !targetMonth.paid
-        ? `Mes de ${targetMonth.name} marcado como PAGADO.`
+      !isCurrentlyAllPaid
+        ? `Mes de ${targetMonth.name} (Alquiler y Servicios) marcado como PAGADO.`
         : `Mes de ${targetMonth.name} marcado como PENDIENTE.`
+    );
+  };
+
+  const handleToggleRentPaid = (id: number) => {
+    const targetMonth = currentYearData.records.find((r) => r.id === id);
+    if (!targetMonth) return;
+    const current = targetMonth.paidRent ?? targetMonth.paid;
+    handleUpdateRecord(id, "paidRent", !current);
+    showToast(
+      !current
+        ? `Alquiler de ${targetMonth.name} marcado como PAGADO.`
+        : `Alquiler de ${targetMonth.name} marcado como PENDIENTE.`
+    );
+  };
+
+  const handleToggleServicesPaid = (id: number) => {
+    const targetMonth = currentYearData.records.find((r) => r.id === id);
+    if (!targetMonth) return;
+    const current = targetMonth.paidServices ?? targetMonth.paid;
+    handleUpdateRecord(id, "paidServices", !current);
+    showToast(
+      !current
+        ? `Servicios de ${targetMonth.name} marcados como PAGADOS.`
+        : `Servicios de ${targetMonth.name} marcados como PENDIENTES.`
     );
   };
 
@@ -128,15 +172,13 @@ export default function DashboardPage() {
 
   const handleApplyBaseRentToAll = (newRent: number) => {
     const updatedRecords = currentYearData.records.map((r) => {
-      const { electricityTenantShare, total } = calculateMonthValues(
-        newRent,
-        r.electricityTotal,
-        r.water
-      );
+      const { electricityTenantShare, servicesTotal, total } =
+        calculateMonthValues(newRent, r.electricityTotal, r.water);
       return {
         ...r,
         baseRent: newRent,
         electricityTenantShare,
+        servicesTotal,
         total,
       };
     });
@@ -226,7 +268,8 @@ export default function DashboardPage() {
             year={currentYear}
             records={currentYearData.records}
             baseRent={currentYearData.baseRent}
-            onTogglePaid={handleTogglePaid}
+            onToggleRentPaid={handleToggleRentPaid}
+            onToggleServicesPaid={handleToggleServicesPaid}
             onToast={showToast}
           />
         ) : (
@@ -244,7 +287,7 @@ export default function DashboardPage() {
                       Panel de Administración - Periodo {currentYear}
                     </h4>
                     <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
-                      Edita alquileres y servicios con cálculo automático de <strong>cuota del 50% de luz</strong>. Puedes cambiar a la <strong>Vista Inquilino</strong> para mostrar un resumen limpio.
+                      Controla el <strong>alquiler mensual</strong> y los <strong>servicios compartidos</strong> (Luz 50% y Agua) de manera independiente.
                     </p>
                   </div>
                 </div>
@@ -273,6 +316,8 @@ export default function DashboardPage() {
               <CalendarView
                 records={currentYearData.records}
                 onTogglePaid={handleTogglePaid}
+                onToggleRentPaid={handleToggleRentPaid}
+                onToggleServicesPaid={handleToggleServicesPaid}
               />
             </section>
 

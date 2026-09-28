@@ -6,8 +6,11 @@ export interface MonthRecord {
   electricityTotal: number; // Recibo de luz 100%
   electricityTenantShare: number; // 50% del recibo de luz (auto-calculado)
   water: number; // Recibo de agua
-  total: number; // Alquiler + (Luz * 0.50) + Agua (auto-calculado)
-  paid: boolean; // ¿Pagado?
+  servicesTotal: number; // Luz Inquilino 50% + Agua (auto-calculado)
+  total: number; // Alquiler + Servicios (auto-calculado)
+  paid: boolean; // Estado general / alquiler
+  paidRent: boolean; // ¿Alquiler pagado?
+  paidServices: boolean; // ¿Servicios de luz/agua pagados?
   paidDate?: string;
   notes?: string;
 }

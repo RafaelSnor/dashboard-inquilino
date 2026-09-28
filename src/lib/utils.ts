@@ -20,22 +20,24 @@ export function formatCurrency(amount: number): string {
 }
 
 /**
- * Calculates tenant electricity share (50%) and grand total for a month.
+ * Calculates tenant electricity share (50%), total services and grand total for a month.
  */
 export function calculateMonthValues(
   baseRent: number,
   electricityTotal: number,
   water: number
-): { electricityTenantShare: number; total: number } {
+): { electricityTenantShare: number; servicesTotal: number; total: number } {
   const safeRent = Number(baseRent) || 0;
   const safeLuz = Number(electricityTotal) || 0;
   const safeAgua = Number(water) || 0;
 
   const electricityTenantShare = Number((safeLuz * 0.5).toFixed(2));
-  const total = Number((safeRent + electricityTenantShare + safeAgua).toFixed(2));
+  const servicesTotal = Number((electricityTenantShare + safeAgua).toFixed(2));
+  const total = Number((safeRent + servicesTotal).toFixed(2));
 
   return {
     electricityTenantShare,
+    servicesTotal,
     total,
   };
 }
@@ -47,21 +49,25 @@ export function exportToCSV(year: number, records: MonthRecord[]): string {
   const headers = [
     "Mes",
     "Alquiler Fijo (S/)",
+    "Estado Alquiler",
     "Recibo Luz 100% (S/)",
     "Cuota Luz 50% (S/)",
     "Recibo Agua (S/)",
+    "Total Servicios (S/)",
+    "Estado Servicios",
     "Total a Pagar (S/)",
-    "Estado",
   ];
 
   const rows = records.map((r) => [
     r.name,
     r.baseRent.toFixed(2),
+    (r.paidRent ?? r.paid) ? "PAGADO" : "PENDIENTE",
     r.electricityTotal.toFixed(2),
     r.electricityTenantShare.toFixed(2),
     r.water.toFixed(2),
+    (r.servicesTotal ?? (r.electricityTenantShare + r.water)).toFixed(2),
+    (r.paidServices ?? r.paid) ? "PAGADO" : "PENDIENTE",
     r.total.toFixed(2),
-    r.paid ? "PAGADO" : "PENDIENTE",
   ]);
 
   const csvContent = [

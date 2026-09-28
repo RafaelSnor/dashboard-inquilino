@@ -11,7 +11,7 @@ interface BreakdownTableProps {
   records: MonthRecord[];
   onUpdateRecord: (
     id: number,
-    field: "baseRent" | "electricityTotal" | "water" | "paid",
+    field: "baseRent" | "electricityTotal" | "water" | "paid" | "paidRent" | "paidServices",
     value: number | boolean
   ) => void;
 }
@@ -25,15 +25,21 @@ export function BreakdownTable({
   const totalLuz100 = records.reduce((sum, r) => sum + r.electricityTotal, 0);
   const totalLuz50 = records.reduce((sum, r) => sum + r.electricityTenantShare, 0);
   const totalAgua = records.reduce((sum, r) => sum + r.water, 0);
+  const totalServicios = records.reduce(
+    (sum, r) => sum + (r.servicesTotal ?? r.electricityTenantShare + r.water),
+    0
+  );
   const grandTotal = records.reduce((sum, r) => sum + r.total, 0);
 
-  const totalPaidAmount = records
-    .filter((r) => r.paid)
-    .reduce((sum, r) => sum + r.total, 0);
+  const totalPaidAmount = records.reduce((sum, r) => {
+    const rentAmount = (r.paidRent ?? r.paid) ? r.baseRent : 0;
+    const servAmount = (r.paidServices ?? r.paid)
+      ? (r.servicesTotal ?? r.electricityTenantShare + r.water)
+      : 0;
+    return sum + rentAmount + servAmount;
+  }, 0);
 
-  const totalPendingAmount = records
-    .filter((r) => !r.paid)
-    .reduce((sum, r) => sum + r.total, 0);
+  const totalPendingAmount = grandTotal - totalPaidAmount;
 
   return (
     <div className="space-y-4">
@@ -60,52 +66,64 @@ export function BreakdownTable({
         <table className="w-full text-left text-sm border-collapse">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50/75 text-xs font-bold uppercase tracking-wider text-slate-600 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-300">
-              <th scope="col" className="py-3.5 px-4 min-w-[130px]">
+              <th scope="col" className="py-3.5 px-4 min-w-[120px]">
                 Mes
               </th>
-              <th scope="col" className="py-3.5 px-4 min-w-[140px]">
+              <th scope="col" className="py-3.5 px-4 min-w-[150px]">
                 <div className="flex items-center gap-1.5">
                   <Home className="h-3.5 w-3.5 text-slate-400" />
                   <span>Alquiler Fijo</span>
                 </div>
               </th>
-              <th scope="col" className="py-3.5 px-4 min-w-[150px]">
+              <th scope="col" className="py-3.5 px-3 min-w-[130px] text-center">
+                ¿Alquiler Pagado?
+              </th>
+              <th scope="col" className="py-3.5 px-4 min-w-[130px]">
                 <div className="flex items-center gap-1.5">
                   <Zap className="h-3.5 w-3.5 text-amber-500" />
-                  <span>Recibo Luz 100%</span>
+                  <span>Luz 100%</span>
                 </div>
               </th>
-              <th scope="col" className="py-3.5 px-4 min-w-[150px]">
+              <th scope="col" className="py-3.5 px-4 min-w-[140px]">
                 <div className="flex items-center gap-1.5">
                   <Zap className="h-3.5 w-3.5 text-sky-500" />
                   <span>Luz Inquilino 50%</span>
                 </div>
               </th>
-              <th scope="col" className="py-3.5 px-4 min-w-[140px]">
+              <th scope="col" className="py-3.5 px-4 min-w-[120px]">
                 <div className="flex items-center gap-1.5">
                   <Droplets className="h-3.5 w-3.5 text-blue-500" />
-                  <span>Recibo Agua</span>
+                  <span>Agua</span>
                 </div>
               </th>
-              <th scope="col" className="py-3.5 px-4 min-w-[140px] text-right">
-                Total a Pagar
+              <th scope="col" className="py-3.5 px-4 min-w-[130px]">
+                <span>Total Servicios</span>
               </th>
-              <th scope="col" className="py-3.5 px-4 min-w-[110px] text-center">
-                ¿Pagado?
+              <th scope="col" className="py-3.5 px-3 min-w-[140px] text-center">
+                ¿Servicios Pagados?
+              </th>
+              <th scope="col" className="py-3.5 px-4 min-w-[130px] text-right">
+                Total Mes
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {records.map((r) => {
-              const isPaid = r.paid;
+              const isRentPaid = r.paidRent ?? r.paid;
+              const isServicesPaid = r.paidServices ?? r.paid;
+              const isAllPaid = isRentPaid && isServicesPaid;
+              const servicesSubtotal =
+                r.servicesTotal ?? r.electricityTenantShare + r.water;
 
               return (
                 <tr
                   key={r.id}
                   className={cn(
                     "transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/50",
-                    isPaid
-                      ? "bg-emerald-50/40 dark:bg-emerald-950/20"
+                    isAllPaid
+                      ? "bg-emerald-50/30 dark:bg-emerald-950/20"
+                      : isRentPaid || isServicesPaid
+                      ? "bg-amber-50/15 dark:bg-amber-950/10"
                       : "bg-white dark:bg-slate-900"
                   )}
                 >
@@ -115,7 +133,7 @@ export function BreakdownTable({
                       <span
                         className={cn(
                           "flex h-6 w-6 items-center justify-center rounded-md text-xs font-semibold",
-                          isPaid
+                          isAllPaid
                             ? "bg-emerald-200/70 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300"
                             : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
                         )}
@@ -149,6 +167,27 @@ export function BreakdownTable({
                     </div>
                   </td>
 
+                  {/* ¿Alquiler Pagado? */}
+                  <td className="py-3 px-3 text-center">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <Checkbox
+                        checked={isRentPaid}
+                        onCheckedChange={(checked) =>
+                          onUpdateRecord(r.id, "paidRent", checked)
+                        }
+                      />
+                      <Badge
+                        variant={isRentPaid ? "emerald" : "amber"}
+                        className="cursor-pointer text-[10px] py-0 px-1.5"
+                        onClick={() =>
+                          onUpdateRecord(r.id, "paidRent", !isRentPaid)
+                        }
+                      >
+                        {isRentPaid ? "AL DÍA" : "PENDIENTE"}
+                      </Badge>
+                    </div>
+                  </td>
+
                   {/* Recibo Luz 100% (Editable) */}
                   <td className="py-3 px-4">
                     <div className="relative flex items-center max-w-[125px]">
@@ -172,14 +211,14 @@ export function BreakdownTable({
 
                   {/* Luz Inquilino 50% (Auto-calculado) */}
                   <td className="py-3 px-4">
-                    <div className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-sky-100 text-sky-800 border border-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800">
+                    <div className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-sky-100 text-sky-800 border border-sky-200 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800">
                       {formatCurrency(r.electricityTenantShare)}
                     </div>
                   </td>
 
                   {/* Recibo Agua (Editable) */}
                   <td className="py-3 px-4">
-                    <div className="relative flex items-center max-w-[125px]">
+                    <div className="relative flex items-center max-w-[115px]">
                       <span className="absolute left-2.5 text-xs font-bold text-slate-400 select-none">
                         S/
                       </span>
@@ -198,42 +237,44 @@ export function BreakdownTable({
                     </div>
                   </td>
 
-                  {/* Total a Pagar (Auto-calculado, bold) */}
+                  {/* Total Servicios */}
+                  <td className="py-3 px-4 font-semibold text-slate-700 dark:text-slate-200 text-xs">
+                    {formatCurrency(servicesSubtotal)}
+                  </td>
+
+                  {/* ¿Servicios Pagados? */}
+                  <td className="py-3 px-3 text-center">
+                    <div className="flex items-center justify-center gap-1.5">
+                      <Checkbox
+                        checked={isServicesPaid}
+                        onCheckedChange={(checked) =>
+                          onUpdateRecord(r.id, "paidServices", checked)
+                        }
+                      />
+                      <Badge
+                        variant={isServicesPaid ? "emerald" : "amber"}
+                        className="cursor-pointer text-[10px] py-0 px-1.5"
+                        onClick={() =>
+                          onUpdateRecord(r.id, "paidServices", !isServicesPaid)
+                        }
+                      >
+                        {isServicesPaid ? "AL DÍA" : "PENDIENTE"}
+                      </Badge>
+                    </div>
+                  </td>
+
+                  {/* Total Mes a Pagar */}
                   <td className="py-3 px-4 text-right">
                     <span
                       className={cn(
                         "text-sm font-extrabold tracking-tight",
-                        isPaid
+                        isAllPaid
                           ? "text-emerald-700 dark:text-emerald-300"
                           : "text-slate-900 dark:text-white"
                       )}
                     >
                       {formatCurrency(r.total)}
                     </span>
-                  </td>
-
-                  {/* ¿Pagado? (Interactive toggle/checkbox) */}
-                  <td className="py-3 px-4 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <Checkbox
-                        checked={r.paid}
-                        onCheckedChange={(checked) =>
-                          onUpdateRecord(r.id, "paid", checked)
-                        }
-                        title={
-                          r.paid
-                            ? "Marcar como pendiente"
-                            : "Marcar como pagado"
-                        }
-                      />
-                      <Badge
-                        variant={isPaid ? "emerald" : "amber"}
-                        className="cursor-pointer text-[10px] py-0 px-1.5"
-                        onClick={() => onUpdateRecord(r.id, "paid", !r.paid)}
-                      >
-                        {isPaid ? "PAGADO" : "PENDIENTE"}
-                      </Badge>
-                    </div>
                   </td>
                 </tr>
               );
@@ -248,6 +289,9 @@ export function BreakdownTable({
               <td className="py-3.5 px-4 text-xs font-bold text-slate-700 dark:text-slate-300">
                 {formatCurrency(totalAlquiler)}
               </td>
+              <td className="py-3.5 px-3 text-center text-xs text-emerald-700 dark:text-emerald-400">
+                {records.filter((r) => r.paidRent ?? r.paid).length}/12
+              </td>
               <td className="py-3.5 px-4 text-xs font-bold text-amber-700 dark:text-amber-400">
                 {formatCurrency(totalLuz100)}
               </td>
@@ -257,11 +301,14 @@ export function BreakdownTable({
               <td className="py-3.5 px-4 text-xs font-bold text-blue-700 dark:text-blue-300">
                 {formatCurrency(totalAgua)}
               </td>
+              <td className="py-3.5 px-4 text-xs font-bold text-slate-800 dark:text-slate-200">
+                {formatCurrency(totalServicios)}
+              </td>
+              <td className="py-3.5 px-3 text-center text-xs text-emerald-700 dark:text-emerald-400">
+                {records.filter((r) => r.paidServices ?? r.paid).length}/12
+              </td>
               <td className="py-3.5 px-4 text-right text-base font-extrabold text-emerald-700 dark:text-emerald-400">
                 {formatCurrency(grandTotal)}
-              </td>
-              <td className="py-3.5 px-4 text-center text-xs text-slate-500 dark:text-slate-400 font-semibold">
-                {records.filter((r) => r.paid).length}/12 Meses
               </td>
             </tr>
           </tfoot>

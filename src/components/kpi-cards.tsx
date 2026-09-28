@@ -8,8 +8,6 @@ import {
   Zap,
   CheckCircle2,
   AlertCircle,
-  HelpCircle,
-  ArrowRight,
 } from "lucide-react";
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -38,16 +36,23 @@ export function KpiCards({
     setRentInput(baseRent.toString());
   }, [baseRent]);
 
-  // Calculations
-  const paidRecords = records.filter((r) => r.paid);
-  const pendingRecords = records.filter((r) => !r.paid);
+  // Calculations taking into account that rent and services can be paid separately
+  const totalCollected = records.reduce((sum, r) => {
+    const rentPaid = (r.paidRent ?? r.paid) ? r.baseRent : 0;
+    const servicesPaid = (r.paidServices ?? r.paid)
+      ? (r.servicesTotal ?? r.electricityTenantShare + r.water)
+      : 0;
+    return sum + rentPaid + servicesPaid;
+  }, 0);
 
-  const totalCollected = paidRecords.reduce((sum, r) => sum + r.total, 0);
-  const totalPending = pendingRecords.reduce((sum, r) => sum + r.total, 0);
-  const totalYearProjected = totalCollected + totalPending;
+  const totalYearProjected = records.reduce((sum, r) => sum + r.total, 0);
+  const totalPending = Math.max(0, totalYearProjected - totalCollected);
 
-  const paidMonthsCount = paidRecords.length;
-  const pendingMonthsCount = pendingRecords.length;
+  const fullyPaidMonthsCount = records.filter(
+    (r) => (r.paidRent ?? r.paid) && (r.paidServices ?? r.paid)
+  ).length;
+
+  const rentPaidCount = records.filter((r) => r.paidRent ?? r.paid).length;
   const percentagePaid = totalYearProjected > 0
     ? Math.round((totalCollected / totalYearProjected) * 100)
     : 0;
@@ -93,7 +98,7 @@ export function KpiCards({
               {percentagePaid}% Cobrado
             </Badge>
             <span className="text-xs text-slate-500 dark:text-slate-400">
-              {paidMonthsCount} de 12 meses
+              {rentPaidCount}/12 alq. al día
             </span>
           </div>
         </CardContent>
@@ -119,10 +124,10 @@ export function KpiCards({
           <div className="mt-3 flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800/80">
             <Badge variant="amber" className="gap-1 px-2 py-0.5 text-[11px]">
               <AlertCircle className="h-3 w-3" />
-              Por Regularizar
+              Saldo por Cobrar
             </Badge>
             <span className="text-xs text-slate-500 dark:text-slate-400">
-              {pendingMonthsCount} {pendingMonthsCount === 1 ? "mes pendiente" : "meses pendientes"}
+              {12 - fullyPaidMonthsCount} meses con saldo
             </span>
           </div>
         </CardContent>
