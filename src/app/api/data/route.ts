@@ -3,6 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 import { StorageState } from "@/lib/types";
 import { getDefaultDashboardState } from "@/lib/initial-data";
+import { getRedisClient, STORAGE_KEY } from "@/lib/kv";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -11,82 +12,138 @@ const DATA_DIR = path.join(process.cwd(), "data");
 const DATA_FILE = path.join(DATA_DIR, "payments.json");
 
 /**
- * Ensures the data directory and payments.json exist.
+ * Fallback to local data/payments.json file if running locally.
  */
-async function ensureDataFile(): Promise<StorageState> {
+async function getLocalFile(): Promise<StorageState> {
   try {
     await fs.mkdir(DATA_DIR, { recursive: true });
     const content = await fs.readFile(DATA_FILE, "utf-8");
     return JSON.parse(content) as StorageState;
   } catch {
-    // If not found or invalid, write defaults
     const defaults = getDefaultDashboardState();
-    await fs.writeFile(DATA_FILE, JSON.stringify(defaults, null, 2), "utf-8");
+    try {
+      await fs.writeFile(DATA_FILE, JSON.stringify(defaults, null, 2), "utf-8");
+    } catch {
+      // Read-only environment fallback
+    }
     return defaults;
   }
 }
 
 /**
  * GET /api/data
- * Returns the stored data from data/payments.json with strict no-cache headers.
  */
 export async function GET() {
+  const headers = {
+    "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+  };
+
   try {
-    const data = await ensureDataFile();
-    return NextResponse.json(
-      { success: true, data },
-      {
-        headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
-        },
+    const redis = getRedisClient();
+
+    // 1. If Cloud KV (Vercel KV / Upstash) is configured
+    if (redis) {
+      try {
+        const cloudData = await redis.get<StorageState>(STORAGE_KEY);
+        if (cloudData && typeof cloudData === "object") {
+          return NextResponse.json(
+            { success: true, data: cloudData, storage: "cloud_kv" },
+            { headers }
+          );
+        }
+
+        // If cloud database is empty, seed it with defaults
+        const defaults = getDefaultDashboardState();
+        await redis.set(STORAGE_KEY, defaults);
+        return NextResponse.json(
+          { success: true, data: defaults, storage: "cloud_kv" },
+          { headers }
+        );
+      } catch (redisError) {
+        console.error("Error reading from Redis:", redisError);
       }
+    }
+
+    // 2. Local JSON file fallback
+    const localData = await getLocalFile();
+    return NextResponse.json(
+      {
+        success: true,
+        data: localData,
+        storage: process.env.VERCEL ? "unconfigured_cloud" : "local_json",
+      },
+      { headers }
     );
   } catch {
     return NextResponse.json(
-      { success: false, error: "Error al leer el archivo de persistencia JSON" },
-      {
-        status: 500,
-        headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
-        },
-      }
+      { success: false, error: "Error al leer datos" },
+      { status: 500, headers }
     );
   }
 }
 
 /**
  * POST /api/data
- * Writes new data directly into data/payments.json
  */
 export async function POST(request: Request) {
+  const headers = {
+    "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+  };
+
   try {
     const payload = await request.json();
 
     if (!payload || typeof payload !== "object") {
       return NextResponse.json(
         { success: false, error: "Estructura de datos inválida" },
-        { status: 400 }
+        { status: 400, headers }
       );
     }
 
+    const redis = getRedisClient();
+
+    // 1. If Cloud KV is configured, save in Cloud for all users
+    if (redis) {
+      await redis.set(STORAGE_KEY, payload);
+      return NextResponse.json(
+        {
+          success: true,
+          storage: "cloud_kv",
+          message: "Guardado en la nube (Vercel KV) para todos los usuarios",
+        },
+        { headers }
+      );
+    }
+
+    // 2. If in Vercel without KV configured
+    if (process.env.VERCEL) {
+      return NextResponse.json(
+        {
+          success: false,
+          storage: "unconfigured_cloud",
+          error:
+            "Para persistir en Vercel para todos los usuarios, vincula Vercel KV / Upstash en la sección Storage de Vercel.",
+        },
+        { status: 503, headers }
+      );
+    }
+
+    // 3. If running locally, save to data/payments.json
     await fs.mkdir(DATA_DIR, { recursive: true });
     await fs.writeFile(DATA_FILE, JSON.stringify(payload, null, 2), "utf-8");
 
     return NextResponse.json(
       {
         success: true,
-        message: "Persistencia guardada exitosamente en data/payments.json",
+        storage: "local_json",
+        message: "Guardado en data/payments.json en tu disco",
       },
-      {
-        headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
-        },
-      }
+      { headers }
     );
-  } catch {
+  } catch (error) {
     return NextResponse.json(
-      { success: false, error: "Error al guardar en el archivo JSON" },
-      { status: 500 }
+      { success: false, error: "Error al guardar los datos" },
+      { status: 500, headers }
     );
   }
 }

@@ -1,17 +1,19 @@
 # Control de Pagos de Inquilino 🏠⚡💧
 
-Dashboard moderno, limpio y responsive para la gestión mensual de pagos de alquiler, prorrateo de servicios públicos (Luz 50% / Agua) y seguimiento de cobranza, desarrollado con **Next.js (App Router)**, **React**, **Tailwind CSS** y **Lucide React**.
+Dashboard moderno, limpio y responsive para la gestión mensual de pagos de alquiler, prorrateo de servicios públicos (Luz 50% / Agua) y seguimiento de cobranza, desarrollado con **Next.js (App Router)**, **React**, **Tailwind CSS**, **Lucide React** y **Persistencia en la Nube (Vercel KV / Upstash)**.
 
 ---
 
 ## 🚀 Características Principales
 
-### 1. Persistencia Básica en Archivo JSON (`data/payments.json`)
-- **Almacenamiento Local en Servidor:** Cada cambio que realizas (alquiler, recibos de luz, agua, estados de pago) se guarda de forma persistente y automática en el archivo **`data/payments.json`** a través de la API interna (`/api/data`).
-- **Doble Capa de Respaldo:** Cuenta con soporte para `localStorage` como caché offline en el navegador.
-- **Exportar e Importar JSON:** Desde el menú de la cabecera puedes descargar el archivo `payments.json` o subir un archivo JSON previo para restaurar todos los registros al instante.
+### 1. Persistencia Multi-Usuario en la Nube y Local
+- **Persistencia en Vercel (Cloud KV):** Funciona de forma nativa con **Vercel KV / Upstash Redis** (100% gratuito). Cuando tú o tu inquilino guardan un cambio, queda registrado en la nube inmediatamente para cualquier usuario o dispositivo.
+- **Persistencia Local (`data/payments.json`):** Si estás ejecutando la aplicación en tu computadora local, los cambios se escriben directamente en el archivo `data/payments.json`.
+- **Botón Explícito de "Guardar Cambios":** Barra de guardado en la cabecera y barra flotante inferior que te avisa cuando hay modificaciones pendientes de guardar en el servidor.
+- **Botón de Sincronización (🔄):** Permite recargar al instante los datos más recientes del servidor sin recargar toda la página.
+- **Exportar e Importar JSON:** Desde el menú puedes descargar una copia de seguridad o subir un archivo JSON para restaurar todos los registros.
 
-### 2. Dos Modos de Vista Integrados (Admin vs. Vista Inquilino)
+### 2. Dos Modos de Vista (Admin vs. Vista Inquilino)
 - **Modo Administrador (Completo):** Vista editable con métricas KPI, inputs para modificar alquiler y recibos, y opciones de configuración.
 - **Vista Compacta (Inquilino):** Vista limpia y profesional pensada para mostrar o compartir con el arrendatario:
   - **Cards tipo calendario para el alquiler:** 12 tarjetas compactas de calendario mensual (Ene - Dic) enfocadas **exclusivamente en el alquiler**, mostrando el monto pactado y su estado (**PAGADO** / **PENDIENTE**).
@@ -42,22 +44,17 @@ Dashboard moderno, limpio y responsive para la gestión mensual de pagos de alqu
   - **Total Mes:** Suma global en tiempo real (`Alquiler + (Luz × 0.50) + Agua`) en tipografía destacada.
 - **Pie de Tabla:** Fila resumen con los totales anuales de cada concepto.
 
-### 6. Exportación y Respaldo
-- **Exportar a CSV:** Descarga directa compatible con Microsoft Excel y Google Sheets con codificación UTF-8.
-- **Descargar JSON:** Copia de respaldo directa de `data/payments.json`.
-- **Importar JSON:** Carga cualquier archivo JSON de respaldo previo directamente desde la interfaz.
-- **Imprimir / Guardar como PDF:** Vista optimizada para impresión en formato formal y limpio.
-- **Restablecer Datos:** Diálogo modal nativo para volver a los valores iniciales.
-
 ---
 
-## 🛠️ Tecnologías Utilizadas
+## ⚡ Conectar en Vercel para Persistencia en la Nube (1 Minuto)
 
-- **Framework:** [Next.js](https://nextjs.org/) (App Router, React 19)
-- **Estilos:** [Tailwind CSS v4](https://tailwindcss.com/)
-- **Iconografía:** [Lucide React](https://lucide.dev/)
-- **Tipado:** [TypeScript](https://www.typescriptlang.org/)
-- **Persistencia:** Archivo JSON en disco (`data/payments.json`) + LocalStorage API
+Para que los cambios se guarden en la nube y sean visibles entre todos los usuarios al desplegar en Vercel:
+
+1. Ve a tu proyecto en el panel de **[Vercel](https://vercel.com/)**.
+2. Haz clic en la pestaña **Storage** -> **Create Database**.
+3. Selecciona **KV (Upstash)** (es 100% gratuito, sin tarjeta de crédito).
+4. Elige un nombre (ej. `dashboard-kv`) y haz clic en **Connect to Project**.
+5. ¡Listo! Vercel configurará automáticamente las variables de entorno (`KV_REST_API_URL` y `KV_REST_API_TOKEN`) y tus datos persistirán en la nube para todos los dispositivos.
 
 ---
 

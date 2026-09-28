@@ -9,7 +9,7 @@ import { TenantCompactView } from "@/components/tenant-compact-view";
 import { StorageState, YearData } from "@/lib/types";
 import { getDefaultDashboardState, createDefaultYearData } from "@/lib/initial-data";
 import { calculateMonthValues, exportToCSV } from "@/lib/utils";
-import { CheckCircle, Sparkles, Eye, Save, AlertTriangle, RotateCcw } from "lucide-react";
+import { CheckCircle, Sparkles, Eye, Save, AlertTriangle, RotateCcw, Cloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const STORAGE_KEY = "dashboard_inquilino_state_v1";
@@ -20,6 +20,9 @@ export default function DashboardPage() {
   const [currentYear, setCurrentYear] = useState<number>(2026);
   const [viewMode, setViewMode] = useState<"admin" | "compact">("admin");
   const [syncStatus, setSyncStatus] = useState<"saved" | "saving" | "offline">("saved");
+  const [storageType, setStorageType] = useState<
+    "cloud_kv" | "local_json" | "unconfigured_cloud" | "offline"
+  >("local_json");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [data, setData] = useState<StorageState>(getDefaultDashboardState);
@@ -37,6 +40,7 @@ export default function DashboardPage() {
         if (json.success && json.data) {
           setData(json.data);
           lastServerDataRef.current = json.data;
+          setStorageType(json.storage || "local_json");
           try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(json.data));
           } catch {}
@@ -95,11 +99,25 @@ export default function DashboardPage() {
         body: JSON.stringify(dataToSave),
       });
 
-      if (res.ok) {
+      const json = await res.json().catch(() => null);
+
+      if (res.ok && json?.success) {
         setSyncStatus("saved");
+        setStorageType(json.storage || "local_json");
         setHasUnsavedChanges(false);
         lastServerDataRef.current = dataToSave;
-        showToast("¡Cambios guardados con éxito en el servidor para todos los usuarios!");
+        showToast(
+          json.storage === "cloud_kv"
+            ? "¡Cambios guardados en la nube (Vercel KV) para todos los usuarios!"
+            : "¡Cambios guardados con éxito en data/payments.json!"
+        );
+      } else if (json?.storage === "unconfigured_cloud") {
+        setStorageType("unconfigured_cloud");
+        setSyncStatus("saved");
+        setHasUnsavedChanges(false);
+        showToast(
+          "Guardado localmente. Para persistir en Vercel para todos los usuarios, añade Vercel KV en Storage."
+        );
       } else {
         setSyncStatus("offline");
         showToast("Advertencia: No se pudo conectar con el servidor, cambios en caché local.");
@@ -116,7 +134,7 @@ export default function DashboardPage() {
   const handleRefreshFromServer = async () => {
     const success = await loadDataFromServer();
     if (success) {
-      showToast("Datos actualizados desde el servidor (data/payments.json).");
+      showToast("Datos actualizados desde el servidor.");
     } else {
       showToast("No se pudo conectar con el servidor.");
     }
@@ -134,7 +152,6 @@ export default function DashboardPage() {
     setData(newData);
     setHasUnsavedChanges(true);
 
-    // Save to local cache so reload doesn't wipe unsaved edits
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
     } catch {}
@@ -214,8 +231,8 @@ export default function DashboardPage() {
     handleUpdateRecord(id, "paid", !isCurrentlyAllPaid);
     showToast(
       !isCurrentlyAllPaid
-        ? `Mes de ${targetMonth.name} (Alquiler y Servicios) marcado como PAGADO.`
-        : `Mes de ${targetMonth.name} marcado como PENDIENTE.`
+        ? `Mes de ${targetMonth.name} marcado como PAGADO. Recuerda guardar.`
+        : `Mes de ${targetMonth.name} marcado como PENDIENTE. Recuerda guardar.`
     );
   };
 
@@ -326,7 +343,7 @@ export default function DashboardPage() {
   const handleImportJSON = (imported: StorageState) => {
     setData(imported);
     handleSaveToServer(imported);
-    showToast("Datos importados y guardados en data/payments.json.");
+    showToast("Datos importados y guardados.");
   };
 
   return (
@@ -389,6 +406,7 @@ export default function DashboardPage() {
         availableYears={AVAILABLE_YEARS}
         viewMode={viewMode}
         syncStatus={syncStatus}
+        storageType={storageType}
         hasUnsavedChanges={hasUnsavedChanges}
         isSaving={isSaving}
         onSaveChanges={() => handleSaveToServer()}
@@ -428,7 +446,7 @@ export default function DashboardPage() {
                       Panel de Administración - Periodo {currentYear}
                     </h4>
                     <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
-                      Edita valores y marca pagos. Haz clic en <strong>Guardar Cambios</strong> en la barra superior para persistir en <code>data/payments.json</code> y que sean visibles para otros usuarios.
+                      Edita valores y marca pagos. Haz clic en <strong>Guardar Cambios</strong> en la barra superior para persistir los datos para otros usuarios.
                     </p>
                   </div>
                 </div>
@@ -484,7 +502,11 @@ export default function DashboardPage() {
             </span>
             <span>•</span>
             <span className="text-slate-400">
-              Persistencia multiusuario en data/payments.json
+              {storageType === "cloud_kv"
+                ? "Persistencia en la nube (Vercel KV)"
+                : storageType === "unconfigured_cloud"
+                ? "Modo Vercel (Caché local)"
+                : "Persistencia local en data/payments.json"}
             </span>
           </div>
           <div className="flex items-center gap-3">

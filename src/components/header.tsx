@@ -15,9 +15,11 @@ import {
   Upload,
   CheckCircle,
   Database,
+  Cloud,
   Save,
   RefreshCw,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Modal } from "./ui/modal";
@@ -28,6 +30,7 @@ interface HeaderProps {
   availableYears: number[];
   viewMode: "admin" | "compact";
   syncStatus: "saved" | "saving" | "offline";
+  storageType?: "cloud_kv" | "local_json" | "unconfigured_cloud" | "offline";
   hasUnsavedChanges: boolean;
   isSaving: boolean;
   onSaveChanges: () => void;
@@ -45,6 +48,7 @@ export function Header({
   availableYears,
   viewMode,
   syncStatus,
+  storageType = "local_json",
   hasUnsavedChanges,
   isSaving,
   onSaveChanges,
@@ -99,10 +103,22 @@ export function Header({
                   <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
                     Control de Pagos de Inquilino
                   </h1>
-                  <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800">
-                    <Database className="h-3 w-3" />
-                    data/payments.json
-                  </span>
+                  {storageType === "cloud_kv" ? (
+                    <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800">
+                      <Cloud className="h-3 w-3 text-emerald-600" />
+                      Nube (Vercel KV)
+                    </span>
+                  ) : storageType === "unconfigured_cloud" ? (
+                    <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800" title="Vercel sin base de datos KV configurada">
+                      <AlertCircle className="h-3 w-3 text-amber-600" />
+                      Vercel (Caché local)
+                    </span>
+                  ) : (
+                    <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-800 border border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
+                      <Database className="h-3 w-3 text-emerald-600" />
+                      data/payments.json
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">
                   <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -125,7 +141,9 @@ export function Header({
                       {hasUnsavedChanges
                         ? "Cambios pendientes de guardar"
                         : syncStatus === "saved"
-                        ? "Guardado en servidor"
+                        ? storageType === "cloud_kv"
+                          ? "Sincronizado en la nube"
+                          : "Guardado en payments.json"
                         : syncStatus === "saving"
                         ? "Guardando..."
                         : "Modo local"}
@@ -157,7 +175,7 @@ export function Header({
                     ? "ring-2 ring-emerald-500/50 animate-bounce duration-1000"
                     : "border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
                 }`}
-                title="Guarda los cambios para que persistan para el inquilino y otros usuarios en data/payments.json"
+                title="Guarda los cambios para que persistan para el inquilino y otros usuarios"
               >
                 {isSaving ? (
                   <>
@@ -278,7 +296,7 @@ export function Header({
                       >
                         <FileJson className="h-4 w-4 text-sky-600" />
                         <div>
-                          <div className="font-semibold">Descargar payments.json</div>
+                          <div className="font-semibold">Descargar JSON</div>
                           <div className="text-[10px] text-slate-400">Copia de respaldo</div>
                         </div>
                       </button>
@@ -331,7 +349,7 @@ export function Header({
         isOpen={showResetModal}
         onClose={() => setShowResetModal(false)}
         title={`¿Restablecer datos del año ${currentYear}?`}
-        description="Esta acción restablecerá los valores de alquiler, servicios y estado de pago de todos los meses de este año a los valores predeterminados y actualizará payments.json."
+        description="Esta acción restablecerá los valores de alquiler, servicios y estado de pago de todos los meses de este año a los valores predeterminados."
         confirmText="Sí, restablecer"
         cancelText="Cancelar"
         confirmVariant="destructive"
