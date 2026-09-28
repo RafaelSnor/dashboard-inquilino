@@ -9,7 +9,7 @@ import { TenantCompactView } from "@/components/tenant-compact-view";
 import { StorageState, YearData } from "@/lib/types";
 import { getDefaultDashboardState, createDefaultYearData } from "@/lib/initial-data";
 import { calculateMonthValues, exportToCSV } from "@/lib/utils";
-import { CheckCircle, Sparkles, Eye } from "lucide-react";
+import { CheckCircle, Sparkles, Eye, Database } from "lucide-react";
 
 const STORAGE_KEY = "dashboard_inquilino_state_v1";
 const AVAILABLE_YEARS = [2025, 2026, 2027];
@@ -18,32 +18,70 @@ export default function DashboardPage() {
   const [isClient, setIsClient] = useState(false);
   const [currentYear, setCurrentYear] = useState<number>(2026);
   const [viewMode, setViewMode] = useState<"admin" | "compact">("admin");
+  const [syncStatus, setSyncStatus] = useState<"saved" | "saving" | "offline">("saved");
   const [data, setData] = useState<StorageState>(getDefaultDashboardState);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Load from localStorage on client mount
+  // Load from /api/data (payments.json) with fallback to localStorage
   useEffect(() => {
     setIsClient(true);
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (typeof parsed === "object" && parsed !== null) {
-          setData(parsed);
+
+    async function loadData() {
+      try {
+        const res = await fetch("/api/data");
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) {
+            setData(json.data);
+            try {
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(json.data));
+            } catch {}
+            setSyncStatus("saved");
+            return;
+          }
         }
+      } catch {
+        // Fallback to localStorage
       }
-    } catch {
-      // LocalStorage access error fallback
+
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (typeof parsed === "object" && parsed !== null) {
+            setData(parsed);
+          }
+        }
+      } catch {}
+      setSyncStatus("offline");
     }
+
+    loadData();
   }, []);
 
-  // Save to localStorage whenever data changes
-  const updateDataAndStore = (newData: StorageState) => {
+  // Save to payments.json via API and localStorage as cache
+  const updateDataAndStore = async (newData: StorageState) => {
     setData(newData);
+    setSyncStatus("saving");
+
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+    } catch {}
+
+    try {
+      const res = await fetch("/api/data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newData),
+      });
+
+      if (res.ok) {
+        setSyncStatus("saved");
+      } else {
+        setSyncStatus("offline");
+      }
     } catch {
-      // Fallback if localStorage quota is exceeded
+      setSyncStatus("offline");
     }
   };
 
@@ -228,14 +266,16 @@ export default function DashboardPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute(
-      "download",
-      `respaldo_dashboard_inquilino_${currentYear}.json`
-    );
+    link.setAttribute("download", `payments_${currentYear}.json`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast("Archivo JSON exportado con éxito.");
+    showToast("Archivo JSON descargado.");
+  };
+
+  const handleImportJSON = (imported: StorageState) => {
+    updateDataAndStore(imported);
+    showToast("Datos importados y guardados en data/payments.json.");
   };
 
   return (
@@ -253,11 +293,13 @@ export default function DashboardPage() {
         currentYear={currentYear}
         availableYears={AVAILABLE_YEARS}
         viewMode={viewMode}
+        syncStatus={syncStatus}
         onViewModeChange={(mode) => setViewMode(mode)}
         onYearChange={(year) => setCurrentYear(year)}
         onResetYear={handleResetYear}
         onExportCSV={handleExportCSV}
         onExportJSON={handleExportJSON}
+        onImportJSON={handleImportJSON}
       />
 
       {/* Main Content Area */}
@@ -287,17 +329,19 @@ export default function DashboardPage() {
                       Panel de Administración - Periodo {currentYear}
                     </h4>
                     <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
-                      Controla el <strong>alquiler mensual</strong> y los <strong>servicios compartidos</strong> (Luz 50% y Agua) de manera independiente.
+                      Los cambios se guardan automáticamente en <code>data/payments.json</code> en tu servidor y en tu navegador.
                     </p>
                   </div>
                 </div>
-                <button
-                  onClick={() => setViewMode("compact")}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors cursor-pointer dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
-                >
-                  <Eye className="h-3.5 w-3.5 text-emerald-600" />
-                  <span>Ver cómo lo ve el inquilino</span>
-                </button>
+                <div className="flex items-center gap-2 self-start sm:self-center">
+                  <button
+                    onClick={() => setViewMode("compact")}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors cursor-pointer dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
+                  >
+                    <Eye className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>Vista Inquilino</span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -340,7 +384,10 @@ export default function DashboardPage() {
               Control de Pagos de Inquilino
             </span>
             <span>•</span>
-            <span>Periodo {currentYear}</span>
+            <span className="inline-flex items-center gap-1 text-slate-400">
+              <Database className="h-3 w-3 text-emerald-500" />
+              Persistencia JSON activa
+            </span>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -350,7 +397,7 @@ export default function DashboardPage() {
               {viewMode === "admin" ? "Cambiar a Vista Inquilino" : "Volver a Panel Admin"}
             </button>
             <span>•</span>
-            <span>Transparencia y orden en alquiler y servicios</span>
+            <span>Periodo {currentYear}</span>
           </div>
         </div>
       </footer>

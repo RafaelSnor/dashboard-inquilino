@@ -1,0 +1,56 @@
+{
+  "2025": {
+    "year": 2025,
+    "baseRent": 1000,
+    "records": [
+      { "id": 1, "name": "Enero", "shortName": "Ene", "baseRent": 1000, "electricityTotal": 120, "electricityTenantShare": 60, "water": 35, "servicesTotal": 95, "total": 1095, "paid": true, "paidRent": true, "paidServices": true },
+      { "id": 2, "name": "Febrero", "shortName": "Feb", "baseRent": 1000, "electricityTotal": 110, "electricityTenantShare": 55, "water": 32, "servicesTotal": 87, "total": 1087, "paid": true, "paidRent": true, "paidServices": true },
+      { "id": 3, "name": "Marzo", "shortName": "Mar", "baseRent": 1000, "electricityTotal": 130, "electricityTenantShare": 65, "water": 36, "servicesTotal": 101, "total": 1101, "paid": true, "paidRent": true, "paidServices": true },
+      { "id": 4, "name": "Abril", "shortName": "Abr", "baseRent": 1000, "electricityTotal": 125, "electricityTenantShare": 62.5, "water": 34, "servicesTotal": 96.5, "total": 1096.5, "paid": true, "paidRent": true, "paidServices": true },
+      { "id": 5, "name": "Mayo", "shortName": "May", "baseRent": 1000, "electricityTotal": 140, "electricityTenantShare": 70, "water": 38, "servicesTotal": 108, "total": 1108, "paid": true, "paidRent": true, "paidServices": true },
+      { "id": 6, "name": "Junio", "shortName": "Jun", "baseRent": 1000, "electricityTotal": 135, "electricityTenantShare": 67.5, "water": 35, "servicesTotal": 102.5, "total": 1102.5, "paid": true, "paidRent": true, "paidServices": true },
+      { "id": 7, "name": "Julio", "shortName": "Jul", "baseRent": 1000, "electricityTotal": 150, "electricityTenantShare": 75, "water": 40, "servicesTotal": 115, "total": 1115, "paid": true, "paidRent": true, "paidServices": true },
+      { "id": 8, "name": "Agosto", "shortName": "Ago", "baseRent": 1000, "electricityTotal": 145, "electricityTenantShare": 72.5, "water": 38, "servicesTotal": 110.5, "total": 1110.5, "paid": true, "paidRent": true, "paidServices": true },
+      { "id": 9, "name": "Setiembre", "shortName": "Set", "baseRent": 1000, "electricityTotal": 130, "electricityTenantShare": 65, "water": 35, "servicesTotal": 100, "total": 1100, "paid": true, "paidRent": true, "paidServices": true },
+      { "id": 10, "name": "Octubre", "shortName": "Oct", "baseRent": 1000, "electricityTotal": 125, "electricityTenantShare": 62.5, "water": 34, "servicesTotal": 96.5, "total": 1096.5, "paid": true, "paidRent": true, "paidServices": true },
+      { "id": 11, "name": "Noviembre", "shortName": "Nov", "baseRent": 1000, "electricityTotal": 140, "electricityTenantShare": 70, "water": 37, "servicesTotal": 107, "total": 1107, "paid": true, "paidRent": true, "paidServices": true },
+      { "id": 12, "name": "Diciembre", "shortName": "Dic", "baseRent": 1000, "electricityTotal": 160, "electricityTenantShare": 80, "water": 42, "servicesTotal": 122, "total": 1122, "paid": true, "paidRent": true, "paidServices": true }
+    ]
+  },
+  "2026": {
+    "year": 2026,
+    "baseRent": 1000,
+    "records": [
+      { "id": 1, "name": "Enero", "shortName": "Ene", "baseRent": 1000, "electricityTotal": 135, "electricityTenantShare": 67.5, "water": 36, "servicesTotal": 103.5, "total": 1103.5, "paid": true, "paidRent": true, "paidServices": true },
+      { "id": 2, "name": "Febrero", "shortName": "Feb", "baseRent": 1000, "electricityTotal": 140, "electricityTenantShare": 70, "water": 38, "servicesTotal": 108, "total": 1108, "paid": true, "paidRent": true, "paidServices": true },
+      { "id": 3, "name": "Marzo", "shortName": "Mar", "baseRent": 1000, "electricityTotal": 128, "electricityTenantShare": 64, "water": 35, "servicesTotal": 99, "total": 1099, "paid": true, "paidRent": true, "paidServices": true },
+      { "id": 4, "name": "Abril", "shortName": "Abr", "baseRent": 1000, "electricityTotal": 132, "electricityTenantShare": 66, "water": 34, "servicesTotal": 100, "total": 1100, "paid": true, "paidRent": true, "paidServices": true },
+      { "id": 5, "name": "Mayo", "shortName": "May", "baseRent": 1000, "electricityTotal": 145, "electricityTenantShare": 72.5, "water": 39, "servicesTotal": 111.5, "total": 1111.5, "paid": true, "paidRent": true, "paidServices": true },
+      { "id": 6, "name": "Junio", "shortName": "Jun", "baseRent": 1000, "electricityTotal": 138, "electricityTenantShare": 69, "water": 37, "servicesTotal": 106, "total": 1106, "paid": true, "paidRent": true, "paidServices": true },
+      { "id": 7, "name": "Julio", "shortName": "Jul", "baseRent": 1000, "electricityTotal": 152, "electricityTenantShare": 76, "water": 41, "servicesTotal": 117, "total": 1117, "paid": true, "paidRent": true, "paidServices": true },
+      { "id": 8, "name": "Agosto", "shortName": "Ago", "baseRent": 1000, "electricityTotal": 142, "electricityTenantShare": 71, "water": 38, "servicesTotal": 109, "total": 1109, "paid": true, "paidRent": true, "paidServices": true },
+      { "id": 9, "name": "Setiembre", "shortName": "Set", "baseRent": 1000, "electricityTotal": 130, "electricityTenantShare": 65, "water": 35, "servicesTotal": 100, "total": 1100, "paid": false, "paidRent": true, "paidServices": false },
+      { "id": 10, "name": "Octubre", "shortName": "Oct", "baseRent": 1000, "electricityTotal": 125, "electricityTenantShare": 62.5, "water": 34, "servicesTotal": 96.5, "total": 1096.5, "paid": false, "paidRent": false, "paidServices": false },
+      { "id": 11, "name": "Noviembre", "shortName": "Nov", "baseRent": 1000, "electricityTotal": 0, "electricityTenantShare": 0, "water": 0, "servicesTotal": 0, "total": 1000, "paid": false, "paidRent": false, "paidServices": false },
+      { "id": 12, "name": "Diciembre", "shortName": "Dic", "baseRent": 1000, "electricityTotal": 0, "electricityTenantShare": 0, "water": 0, "servicesTotal": 0, "total": 1000, "paid": false, "paidRent": false, "paidServices": false }
+    ]
+  },
+  "2027": {
+    "year": 2027,
+    "baseRent": 1000,
+    "records": [
+      { "id": 1, "name": "Enero", "shortName": "Ene", "baseRent": 1000, "electricityTotal": 0, "electricityTenantShare": 0, "water": 0, "servicesTotal": 0, "total": 1000, "paid": false, "paidRent": false, "paidServices": false },
+      { "id": 2, "name": "Febrero", "shortName": "Feb", "baseRent": 1000, "electricityTotal": 0, "electricityTenantShare": 0, "water": 0, "servicesTotal": 0, "total": 1000, "paid": false, "paidRent": false, "paidServices": false },
+      { "id": 3, "name": "Marzo", "shortName": "Mar", "baseRent": 1000, "electricityTotal": 0, "electricityTenantShare": 0, "water": 0, "servicesTotal": 0, "total": 1000, "paid": false, "paidRent": false, "paidServices": false },
+      { "id": 4, "name": "Abril", "shortName": "Abr", "baseRent": 1000, "electricityTotal": 0, "electricityTenantShare": 0, "water": 0, "servicesTotal": 0, "total": 1000, "paid": false, "paidRent": false, "paidServices": false },
+      { "id": 5, "name": "Mayo", "shortName": "May", "baseRent": 1000, "electricityTotal": 0, "electricityTenantShare": 0, "water": 0, "servicesTotal": 0, "total": 1000, "paid": false, "paidRent": false, "paidServices": false },
+      { "id": 6, "name": "Junio", "shortName": "Jun", "baseRent": 1000, "electricityTotal": 0, "electricityTenantShare": 0, "water": 0, "servicesTotal": 0, "total": 1000, "paid": false, "paidRent": false, "paidServices": false },
+      { "id": 7, "name": "Julio", "shortName": "Jul", "baseRent": 1000, "electricityTotal": 0, "electricityTenantShare": 0, "water": 0, "servicesTotal": 0, "total": 1000, "paid": false, "paidRent": false, "paidServices": false },
+      { "id": 8, "name": "Agosto", "shortName": "Ago", "baseRent": 1000, "electricityTotal": 0, "electricityTenantShare": 0, "water": 0, "servicesTotal": 0, "total": 1000, "paid": false, "paidRent": false, "paidServices": false },
+      { "id": 9, "name": "Setiembre", "shortName": "Set", "baseRent": 1000, "electricityTotal": 0, "electricityTenantShare": 0, "water": 0, "servicesTotal": 0, "total": 1000, "paid": false, "paidRent": false, "paidServices": false },
+      { "id": 10, "name": "Octubre", "shortName": "Oct", "baseRent": 1000, "electricityTotal": 0, "electricityTenantShare": 0, "water": 0, "servicesTotal": 0, "total": 1000, "paid": false, "paidRent": false, "paidServices": false },
+      { "id": 11, "name": "Noviembre", "shortName": "Nov", "baseRent": 1000, "electricityTotal": 0, "electricityTenantShare": 0, "water": 0, "servicesTotal": 0, "total": 1000, "paid": false, "paidRent": false, "paidServices": false },
+      { "id": 12, "name": "Diciembre", "shortName": "Dic", "baseRent": 1000, "electricityTotal": 0, "electricityTenantShare": 0, "water": 0, "servicesTotal": 0, "total": 1000, "paid": false, "paidRent": false, "paidServices": false }
+    ]
+  }
+}

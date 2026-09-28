@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   Calendar,
   Download,
@@ -12,37 +12,66 @@ import {
   Building2,
   LayoutDashboard,
   Eye,
+  Upload,
+  CheckCircle,
+  Database,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Modal } from "./ui/modal";
+import { StorageState } from "@/lib/types";
 
 interface HeaderProps {
   currentYear: number;
   availableYears: number[];
   viewMode: "admin" | "compact";
+  syncStatus: "saved" | "saving" | "offline";
   onViewModeChange: (mode: "admin" | "compact") => void;
   onYearChange: (year: number) => void;
   onResetYear: () => void;
   onExportCSV: () => void;
   onExportJSON: () => void;
+  onImportJSON: (imported: StorageState) => void;
 }
 
 export function Header({
   currentYear,
   availableYears,
   viewMode,
+  syncStatus,
   onViewModeChange,
   onYearChange,
   onResetYear,
   onExportCSV,
   onExportJSON,
+  onImportJSON,
 }: HeaderProps) {
   const [showResetModal, setShowResetModal] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handlePrint = () => {
     setShowExportMenu(false);
     window.print();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const parsed = JSON.parse(event.target?.result as string);
+        if (typeof parsed === "object" && parsed !== null) {
+          onImportJSON(parsed as StorageState);
+        }
+      } catch {
+        alert("El archivo seleccionado no es un JSON válido.");
+      }
+    };
+    reader.readAsText(file);
+    // Reset file input so the same file can be selected again
+    e.target.value = "";
   };
 
   return (
@@ -60,18 +89,49 @@ export function Header({
                   <h1 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
                     Control de Pagos de Inquilino
                   </h1>
-                  <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800">
-                    SaaS Dashboard
+                  <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800">
+                    <Database className="h-3 w-3" />
+                    data/payments.json
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Gestión mensual de alquiler, prorrateo de servicios compartidos y estado de pagos
-                </p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Gestión mensual de alquiler, servicios y estado de pagos
+                  </p>
+                  <span className="text-slate-300 dark:text-slate-700">•</span>
+                  <div className="flex items-center gap-1 text-[11px] text-slate-500">
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        syncStatus === "saved"
+                          ? "bg-emerald-500"
+                          : syncStatus === "saving"
+                          ? "bg-amber-500 animate-ping"
+                          : "bg-slate-400"
+                      }`}
+                    />
+                    <span>
+                      {syncStatus === "saved"
+                        ? "JSON sincronizado"
+                        : syncStatus === "saving"
+                        ? "Guardando JSON..."
+                        : "Modo local"}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* View Mode Toggle, Year Selector & Action Buttons */}
             <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+              {/* Hidden File Input for JSON import */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={handleFileChange}
+              />
+
               {/* View Mode Switcher */}
               <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-inner">
                 <button
@@ -129,7 +189,7 @@ export function Header({
                   onClick={() => setShowExportMenu(!showExportMenu)}
                 >
                   <Download className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>Exportar</span>
+                  <span>Exportar / Importar</span>
                   <ChevronDown className="h-3 w-3 text-slate-400" />
                 </Button>
 
@@ -139,7 +199,7 @@ export function Header({
                       className="fixed inset-0 z-10"
                       onClick={() => setShowExportMenu(false)}
                     />
-                    <div className="absolute right-0 mt-1.5 w-52 rounded-xl bg-white p-1.5 shadow-xl border border-slate-200 z-20 animate-in fade-in-80 zoom-in-95 dark:bg-slate-900 dark:border-slate-800">
+                    <div className="absolute right-0 mt-1.5 w-56 rounded-xl bg-white p-1.5 shadow-xl border border-slate-200 z-20 animate-in fade-in-80 zoom-in-95 dark:bg-slate-900 dark:border-slate-800">
                       <button
                         onClick={() => {
                           setShowExportMenu(false);
@@ -150,7 +210,7 @@ export function Header({
                         <FileSpreadsheet className="h-4 w-4 text-emerald-600" />
                         <div>
                           <div className="font-semibold">Descargar CSV</div>
-                          <div className="text-[10px] text-slate-400">Compatible con Excel / Sheets</div>
+                          <div className="text-[10px] text-slate-400">Excel / Google Sheets</div>
                         </div>
                       </button>
                       <button
@@ -162,11 +222,24 @@ export function Header({
                       >
                         <FileJson className="h-4 w-4 text-sky-600" />
                         <div>
-                          <div className="font-semibold">Exportar JSON</div>
-                          <div className="text-[10px] text-slate-400">Copia de seguridad</div>
+                          <div className="font-semibold">Descargar payments.json</div>
+                          <div className="text-[10px] text-slate-400">Copia de respaldo</div>
                         </div>
                       </button>
                       <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+                      <button
+                        onClick={() => {
+                          setShowExportMenu(false);
+                          fileInputRef.current?.click();
+                        }}
+                        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 text-left transition-colors cursor-pointer"
+                      >
+                        <Upload className="h-4 w-4 text-amber-600" />
+                        <div>
+                          <div className="font-semibold">Importar archivo JSON</div>
+                          <div className="text-[10px] text-slate-400">Cargar respaldo previo</div>
+                        </div>
+                      </button>
                       <button
                         onClick={handlePrint}
                         className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 text-left transition-colors cursor-pointer"
@@ -174,7 +247,7 @@ export function Header({
                         <Printer className="h-4 w-4 text-indigo-600" />
                         <div>
                           <div className="font-semibold">Imprimir / PDF</div>
-                          <div className="text-[10px] text-slate-400">Vista de reporte limpio</div>
+                          <div className="text-[10px] text-slate-400">Comprobante de reporte</div>
                         </div>
                       </button>
                     </div>
@@ -202,7 +275,7 @@ export function Header({
         isOpen={showResetModal}
         onClose={() => setShowResetModal(false)}
         title={`¿Restablecer datos del año ${currentYear}?`}
-        description="Esta acción restablecerá los valores de alquiler, servicios y estado de pago de todos los meses de este año a los valores predeterminados."
+        description="Esta acción restablecerá los valores de alquiler, servicios y estado de pago de todos los meses de este año a los valores predeterminados y actualizará payments.json."
         confirmText="Sí, restablecer"
         cancelText="Cancelar"
         confirmVariant="destructive"
