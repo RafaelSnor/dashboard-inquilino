@@ -6,20 +6,27 @@ Dashboard moderno, limpio y responsive para la gestión mensual de pagos de alqu
 
 ## 🚀 Características Principales
 
-### 1. Panel Superior y Tarjetas KPI
+### 1. Dos Modos de Vista Integrados (Admin vs. Vista Inquilino)
+- **Modo Administrador (Completo):** Vista editable con métricas KPI, inputs para modificar alquiler y recibos, y opciones de configuración.
+- **Vista Compacta (Inquilino):** Vista limpia y profesional pensada para mostrar o compartir con el arrendatario:
+  - **Cards tipo calendario para el alquiler:** 12 tarjetas compactas de calendario mensual (Ene - Dic) mostrando el estado de pago, el alquiler base y el total del mes.
+  - **Tabla comprimida de servicios (abajo):** Tabla condensada y legible con el desglose exacto de Luz (100%), Cuota Luz Inquilino (50%), Recibo de Agua, Subtotal de Servicios y Total a Pagar.
+  - **Botón Copiar para WhatsApp:** Genera automáticamente un resumen listo para enviar por mensajería al inquilino con el detalle de saldo pendiente o confirmación de pago.
+
+### 2. Panel Superior y Tarjetas KPI
 - **Selector de Años:** Alterna fácilmente entre **2025**, **2026** y **2027** con almacenamiento independiente por periodo.
 - **Total Recaudado:** Suma dinámica de todos los meses marcados como pagados con indicador de avance porcentual.
 - **Pendiente de Cobro:** Suma de montos por regularizar y conteo de meses pendientes.
 - **Alquiler Base:** Valor de referencia editable en soles (`S/`), con opción de aplicar a todos los meses con un solo clic.
 - **Cuota Luz Inquilino:** Regla fija de prorrateo del **50%** sobre el total de la factura eléctrica.
 
-### 2. Vista Calendario Visual (12 Meses)
+### 3. Vista Calendario Visual (12 Meses)
 - Cuadrícula de 12 tarjetas interactivas (Enero a Diciembre).
 - **Mes Pagado:** Fondo verde esmeralda suave (`emerald-50`, borde `emerald-500`), insignia destacada **"PAGADO"** y monto mensual formateado en PEN (`S/ 0.00`).
 - **Mes Pendiente:** Diseño neutro (`bg-slate-50`, borde `slate-200`) con insignia **"PENDIENTE"**.
 - Alternador interactivo para marcar rápidamente el estado de pago de cada mes.
 
-### 3. Tabla de Desglose Detallado
+### 4. Tabla de Desglose Detallado
 - **Columnas:**
   - **Mes:** Nombre y número de mes.
   - **Alquiler Fijo:** Campo numérico editable (con valor inicial del alquiler base).
@@ -30,13 +37,13 @@ Dashboard moderno, limpio y responsive para la gestión mensual de pagos de alqu
   - **¿Pagado?:** Casilla interactiva / toggle que sincroniza en tiempo real con el calendario y recalcula los KPIs.
 - **Pie de Tabla:** Fila resumen con los totales anuales de cada concepto.
 
-### 4. Exportación y Respaldo
+### 5. Exportación y Respaldo
 - **Exportar a CSV:** Descarga directa compatible con Microsoft Excel y Google Sheets con codificación UTF-8.
 - **Exportar JSON:** Copia de seguridad completa de los datos para respaldo.
 - **Imprimir / Guardar como PDF:** Vista optimizada para impresión en formato formal y limpio.
 - **Restablecer Datos:** Diálogo modal nativo para volver a los valores iniciales.
 
-### 5. Persistencia Local
+### 6. Persistencia Local
 - Todo cambio se guarda automáticamente en `localStorage`, asegurando que no se pierdan los datos al recargar la página.
 
 ---

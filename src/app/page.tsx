@@ -5,10 +5,11 @@ import { Header } from "@/components/header";
 import { KpiCards } from "@/components/kpi-cards";
 import { CalendarView } from "@/components/calendar-view";
 import { BreakdownTable } from "@/components/breakdown-table";
+import { TenantCompactView } from "@/components/tenant-compact-view";
 import { StorageState, YearData } from "@/lib/types";
 import { getDefaultDashboardState, createDefaultYearData } from "@/lib/initial-data";
 import { calculateMonthValues, exportToCSV } from "@/lib/utils";
-import { CheckCircle, Info, Sparkles } from "lucide-react";
+import { CheckCircle, Sparkles, Eye, LayoutDashboard } from "lucide-react";
 
 const STORAGE_KEY = "dashboard_inquilino_state_v1";
 const AVAILABLE_YEARS = [2025, 2026, 2027];
@@ -16,6 +17,7 @@ const AVAILABLE_YEARS = [2025, 2026, 2027];
 export default function DashboardPage() {
   const [isClient, setIsClient] = useState(false);
   const [currentYear, setCurrentYear] = useState<number>(2026);
+  const [viewMode, setViewMode] = useState<"admin" | "compact">("admin");
   const [data, setData] = useState<StorageState>(getDefaultDashboardState);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -208,6 +210,8 @@ export default function DashboardPage() {
       <Header
         currentYear={currentYear}
         availableYears={AVAILABLE_YEARS}
+        viewMode={viewMode}
+        onViewModeChange={(mode) => setViewMode(mode)}
         onYearChange={(year) => setCurrentYear(year)}
         onResetYear={handleResetYear}
         onExportCSV={handleExportCSV}
@@ -215,55 +219,72 @@ export default function DashboardPage() {
       />
 
       {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8 flex-1">
-        {/* Banner with Tenant context & Rules reminder */}
-        <div className="rounded-xl border border-emerald-100 bg-gradient-to-r from-emerald-50 via-teal-50 to-sky-50 p-4 sm:p-5 dark:border-emerald-900/40 dark:from-emerald-950/30 dark:via-teal-950/20 dark:to-sky-950/20 shadow-xs print:hidden">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-emerald-600 text-white mt-0.5 shadow-sm">
-                <Sparkles className="h-4 w-4" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-                  Resumen de Cobros - Periodo {currentYear}
-                </h4>
-                <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
-                  Los cálculos aplican automáticamente la cuota del <strong>50% de luz</strong> sobre la factura total, sumada al alquiler mensual y consumo individual de agua.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 self-end sm:self-center">
-              <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Sincronización local activa</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 1. Top KPI Cards */}
-        <section aria-label="Tarjetas de Métricas Clave">
-          <KpiCards
+      <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-7 flex-1">
+        {viewMode === "compact" ? (
+          /* ================= VISTA COMPACTA PARA EL INQUILINO ================= */
+          <TenantCompactView
+            year={currentYear}
             records={currentYearData.records}
             baseRent={currentYearData.baseRent}
-            onUpdateBaseRent={handleUpdateBaseRent}
-            onApplyBaseRentToAll={handleApplyBaseRentToAll}
-          />
-        </section>
-
-        {/* 2. Visual Calendar View (12 Months) */}
-        <section aria-label="Calendario Anual">
-          <CalendarView
-            records={currentYearData.records}
             onTogglePaid={handleTogglePaid}
+            onToast={showToast}
           />
-        </section>
+        ) : (
+          /* ================= VISTA COMPLETA ADMINISTRADOR ================= */
+          <>
+            {/* Banner with Tenant context & Rules reminder */}
+            <div className="rounded-xl border border-emerald-100 bg-gradient-to-r from-emerald-50 via-teal-50 to-sky-50 p-4 sm:p-5 dark:border-emerald-900/40 dark:from-emerald-950/30 dark:via-teal-950/20 dark:to-sky-950/20 shadow-xs print:hidden">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-lg bg-emerald-600 text-white mt-0.5 shadow-sm">
+                    <Sparkles className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                      Panel de Administración - Periodo {currentYear}
+                    </h4>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+                      Edita alquileres y servicios con cálculo automático de <strong>cuota del 50% de luz</strong>. Puedes cambiar a la <strong>Vista Inquilino</strong> para mostrar un resumen limpio.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setViewMode("compact")}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors cursor-pointer dark:bg-slate-900 dark:border-slate-700 dark:text-slate-200"
+                >
+                  <Eye className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>Ver cómo lo ve el inquilino</span>
+                </button>
+              </div>
+            </div>
 
-        {/* 3. Detailed Breakdown Table */}
-        <section aria-label="Tabla de Desglose">
-          <BreakdownTable
-            records={currentYearData.records}
-            onUpdateRecord={handleUpdateRecord}
-          />
-        </section>
+            {/* 1. Top KPI Cards */}
+            <section aria-label="Tarjetas de Métricas Clave">
+              <KpiCards
+                records={currentYearData.records}
+                baseRent={currentYearData.baseRent}
+                onUpdateBaseRent={handleUpdateBaseRent}
+                onApplyBaseRentToAll={handleApplyBaseRentToAll}
+              />
+            </section>
+
+            {/* 2. Visual Calendar View (12 Months) */}
+            <section aria-label="Calendario Anual">
+              <CalendarView
+                records={currentYearData.records}
+                onTogglePaid={handleTogglePaid}
+              />
+            </section>
+
+            {/* 3. Detailed Breakdown Table */}
+            <section aria-label="Tabla de Desglose">
+              <BreakdownTable
+                records={currentYearData.records}
+                onUpdateRecord={handleUpdateRecord}
+              />
+            </section>
+          </>
+        )}
       </main>
 
       {/* Footer */}
@@ -274,10 +295,17 @@ export default function DashboardPage() {
               Control de Pagos de Inquilino
             </span>
             <span>•</span>
-            <span>Versión 1.0.0</span>
+            <span>Periodo {currentYear}</span>
           </div>
-          <div>
-            Diseñado para gestión transparente y eficiente de alquiler y servicios
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setViewMode(viewMode === "admin" ? "compact" : "admin")}
+              className="text-emerald-600 hover:underline font-medium cursor-pointer dark:text-emerald-400"
+            >
+              {viewMode === "admin" ? "Cambiar a Vista Inquilino" : "Volver a Panel Admin"}
+            </button>
+            <span>•</span>
+            <span>Transparencia y orden en alquiler y servicios</span>
           </div>
         </div>
       </footer>
