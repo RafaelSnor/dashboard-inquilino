@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Header } from "@/components/header";
 import { KpiCards } from "@/components/kpi-cards";
 import { CalendarView } from "@/components/calendar-view";
@@ -9,7 +9,8 @@ import { TenantCompactView } from "@/components/tenant-compact-view";
 import { StorageState, YearData } from "@/lib/types";
 import { getDefaultDashboardState, createDefaultYearData } from "@/lib/initial-data";
 import { calculateMonthValues, exportToCSV } from "@/lib/utils";
-import { CheckCircle, Sparkles, Eye, Database } from "lucide-react";
+import { CheckCircle, Sparkles, Eye, Save, AlertTriangle, RotateCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const STORAGE_KEY = "dashboard_inquilino_state_v1";
 const AVAILABLE_YEARS = [2025, 2026, 2027];
@@ -19,80 +20,127 @@ export default function DashboardPage() {
   const [currentYear, setCurrentYear] = useState<number>(2026);
   const [viewMode, setViewMode] = useState<"admin" | "compact">("admin");
   const [syncStatus, setSyncStatus] = useState<"saved" | "saving" | "offline">("saved");
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
   const [data, setData] = useState<StorageState>(getDefaultDashboardState);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Load from /api/data (payments.json) with fallback to localStorage
-  useEffect(() => {
-    setIsClient(true);
+  // Store last server confirmed data for discard functionality
+  const lastServerDataRef = useRef<StorageState>(getDefaultDashboardState());
 
-    async function loadData() {
-      try {
-        const res = await fetch("/api/data");
-        if (res.ok) {
-          const json = await res.json();
-          if (json.success && json.data) {
-            setData(json.data);
-            try {
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(json.data));
-            } catch {}
-            setSyncStatus("saved");
-            return;
-          }
-        }
-      } catch {
-        // Fallback to localStorage
-      }
-
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (typeof parsed === "object" && parsed !== null) {
-            setData(parsed);
-          }
-        }
-      } catch {}
-      setSyncStatus("offline");
-    }
-
-    loadData();
-  }, []);
-
-  // Save to payments.json via API and localStorage as cache
-  const updateDataAndStore = async (newData: StorageState) => {
-    setData(newData);
-    setSyncStatus("saving");
-
+  // Function to load data from server API
+  const loadDataFromServer = async () => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
-    } catch {}
-
-    try {
-      const res = await fetch("/api/data", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newData),
-      });
-
+      const res = await fetch("/api/data", { cache: "no-store" });
       if (res.ok) {
-        setSyncStatus("saved");
-      } else {
-        setSyncStatus("offline");
+        const json = await res.json();
+        if (json.success && json.data) {
+          setData(json.data);
+          lastServerDataRef.current = json.data;
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(json.data));
+          } catch {}
+          setSyncStatus("saved");
+          setHasUnsavedChanges(false);
+          return true;
+        }
       }
     } catch {
-      setSyncStatus("offline");
+      // Fallback
     }
+
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed === "object" && parsed !== null) {
+          setData(parsed);
+          lastServerDataRef.current = parsed;
+        }
+      }
+    } catch {}
+    setSyncStatus("offline");
+    return false;
   };
+
+  // Initial load
+  useEffect(() => {
+    setIsClient(true);
+    loadDataFromServer();
+  }, []);
 
   const showToast = (message: string) => {
     setToastMessage(message);
     setTimeout(() => {
       setToastMessage(null);
-    }, 3500);
+    }, 4000);
   };
 
-  // Get current year's dataset safely
+  // Explicit Save to Server Action
+  const handleSaveToServer = async (targetData?: StorageState) => {
+    const dataToSave = targetData || data;
+    setIsSaving(true);
+    setSyncStatus("saving");
+
+    try {
+      // Always keep local cache fresh
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+      } catch {}
+
+      const res = await fetch("/api/data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify(dataToSave),
+      });
+
+      if (res.ok) {
+        setSyncStatus("saved");
+        setHasUnsavedChanges(false);
+        lastServerDataRef.current = dataToSave;
+        showToast("¡Cambios guardados con éxito en el servidor para todos los usuarios!");
+      } else {
+        setSyncStatus("offline");
+        showToast("Advertencia: No se pudo conectar con el servidor, cambios en caché local.");
+      }
+    } catch {
+      setSyncStatus("offline");
+      showToast("Error de conexión al guardar en el servidor.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Refresh from server
+  const handleRefreshFromServer = async () => {
+    const success = await loadDataFromServer();
+    if (success) {
+      showToast("Datos actualizados desde el servidor (data/payments.json).");
+    } else {
+      showToast("No se pudo conectar con el servidor.");
+    }
+  };
+
+  // Discard local changes
+  const handleDiscardChanges = () => {
+    setData(lastServerDataRef.current);
+    setHasUnsavedChanges(false);
+    showToast("Cambios descartados. Se restauró la versión del servidor.");
+  };
+
+  // Local state update when user edits
+  const updateLocalData = (newData: StorageState) => {
+    setData(newData);
+    setHasUnsavedChanges(true);
+
+    // Save to local cache so reload doesn't wipe unsaved edits
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newData));
+    } catch {}
+  };
+
+  // Current year data
   const currentYearData: YearData =
     data[currentYear] || createDefaultYearData(currentYear);
 
@@ -150,7 +198,7 @@ export default function DashboardPage() {
       records: updatedRecords,
     };
 
-    updateDataAndStore({
+    updateLocalData({
       ...data,
       [currentYear]: updatedYearData,
     });
@@ -201,11 +249,11 @@ export default function DashboardPage() {
       baseRent: newRent,
     };
 
-    updateDataAndStore({
+    updateLocalData({
       ...data,
       [currentYear]: updatedYearData,
     });
-    showToast(`Alquiler base actualizado a S/ ${newRent.toFixed(2)}.`);
+    showToast(`Alquiler base actualizado a S/ ${newRent.toFixed(2)}. Recuerda guardar los cambios.`);
   };
 
   const handleApplyBaseRentToAll = (newRent: number) => {
@@ -227,21 +275,23 @@ export default function DashboardPage() {
       records: updatedRecords,
     };
 
-    updateDataAndStore({
+    updateLocalData({
       ...data,
       [currentYear]: updatedYearData,
     });
     showToast(
-      `Alquiler de S/ ${newRent.toFixed(2)} aplicado a todos los 12 meses.`
+      `Alquiler de S/ ${newRent.toFixed(2)} aplicado a todos los 12 meses. Recuerda guardar los cambios.`
     );
   };
 
   const handleResetYear = () => {
     const freshData = createDefaultYearData(currentYear);
-    updateDataAndStore({
+    const updated = {
       ...data,
       [currentYear]: freshData,
-    });
+    };
+    setData(updated);
+    handleSaveToServer(updated);
     showToast(`Datos del año ${currentYear} restablecidos.`);
   };
 
@@ -274,17 +324,62 @@ export default function DashboardPage() {
   };
 
   const handleImportJSON = (imported: StorageState) => {
-    updateDataAndStore(imported);
+    setData(imported);
+    handleSaveToServer(imported);
     showToast("Datos importados y guardados en data/payments.json.");
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/70 text-slate-800 dark:bg-slate-950 dark:text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-slate-50/70 text-slate-800 dark:bg-slate-950 dark:text-slate-100 flex flex-col pb-16">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm text-white shadow-xl animate-in slide-in-from-bottom-3 duration-200 dark:bg-emerald-600">
           <CheckCircle className="h-4 w-4 text-emerald-400 dark:text-white" />
           <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Floating Bottom Save Bar when Unsaved Changes exist */}
+      {hasUnsavedChanges && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 w-[95%] max-w-2xl rounded-2xl border border-amber-300 bg-white/95 p-3.5 shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom-6 duration-200 dark:border-amber-700 dark:bg-slate-900/95 print:hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                <AlertTriangle className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
+                  Tienes cambios sin guardar en el servidor
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Para que otros usuarios o el inquilino los vean, presiona guardar.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-end sm:self-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs text-slate-600 hover:text-slate-900"
+                onClick={handleDiscardChanges}
+                disabled={isSaving}
+              >
+                <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                Descartar
+              </Button>
+              <Button
+                variant="emerald"
+                size="sm"
+                className="h-8 text-xs font-bold gap-1.5 shadow-md"
+                onClick={() => handleSaveToServer()}
+                disabled={isSaving}
+              >
+                <Save className="h-3.5 w-3.5" />
+                {isSaving ? "Guardando..." : "Guardar Cambios"}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -294,6 +389,10 @@ export default function DashboardPage() {
         availableYears={AVAILABLE_YEARS}
         viewMode={viewMode}
         syncStatus={syncStatus}
+        hasUnsavedChanges={hasUnsavedChanges}
+        isSaving={isSaving}
+        onSaveChanges={() => handleSaveToServer()}
+        onRefreshFromServer={handleRefreshFromServer}
         onViewModeChange={(mode) => setViewMode(mode)}
         onYearChange={(year) => setCurrentYear(year)}
         onResetYear={handleResetYear}
@@ -329,7 +428,7 @@ export default function DashboardPage() {
                       Panel de Administración - Periodo {currentYear}
                     </h4>
                     <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
-                      Los cambios se guardan automáticamente en <code>data/payments.json</code> en tu servidor y en tu navegador.
+                      Edita valores y marca pagos. Haz clic en <strong>Guardar Cambios</strong> en la barra superior para persistir en <code>data/payments.json</code> y que sean visibles para otros usuarios.
                     </p>
                   </div>
                 </div>
@@ -384,9 +483,8 @@ export default function DashboardPage() {
               Control de Pagos de Inquilino
             </span>
             <span>•</span>
-            <span className="inline-flex items-center gap-1 text-slate-400">
-              <Database className="h-3 w-3 text-emerald-500" />
-              Persistencia JSON activa
+            <span className="text-slate-400">
+              Persistencia multiusuario en data/payments.json
             </span>
           </div>
           <div className="flex items-center gap-3">

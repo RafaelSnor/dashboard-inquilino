@@ -15,6 +15,9 @@ import {
   Upload,
   CheckCircle,
   Database,
+  Save,
+  RefreshCw,
+  Loader2,
 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Modal } from "./ui/modal";
@@ -25,6 +28,10 @@ interface HeaderProps {
   availableYears: number[];
   viewMode: "admin" | "compact";
   syncStatus: "saved" | "saving" | "offline";
+  hasUnsavedChanges: boolean;
+  isSaving: boolean;
+  onSaveChanges: () => void;
+  onRefreshFromServer: () => void;
   onViewModeChange: (mode: "admin" | "compact") => void;
   onYearChange: (year: number) => void;
   onResetYear: () => void;
@@ -38,6 +45,10 @@ export function Header({
   availableYears,
   viewMode,
   syncStatus,
+  hasUnsavedChanges,
+  isSaving,
+  onSaveChanges,
+  onRefreshFromServer,
   onViewModeChange,
   onYearChange,
   onResetYear,
@@ -70,7 +81,6 @@ export function Header({
       }
     };
     reader.readAsText(file);
-    // Reset file input so the same file can be selected again
     e.target.value = "";
   };
 
@@ -102,18 +112,22 @@ export function Header({
                   <div className="flex items-center gap-1 text-[11px] text-slate-500">
                     <span
                       className={`h-2 w-2 rounded-full ${
-                        syncStatus === "saved"
+                        hasUnsavedChanges
+                          ? "bg-amber-500 animate-pulse"
+                          : syncStatus === "saved"
                           ? "bg-emerald-500"
                           : syncStatus === "saving"
-                          ? "bg-amber-500 animate-ping"
+                          ? "bg-sky-500 animate-spin"
                           : "bg-slate-400"
                       }`}
                     />
                     <span>
-                      {syncStatus === "saved"
-                        ? "JSON sincronizado"
+                      {hasUnsavedChanges
+                        ? "Cambios pendientes de guardar"
+                        : syncStatus === "saved"
+                        ? "Guardado en servidor"
                         : syncStatus === "saving"
-                        ? "Guardando JSON..."
+                        ? "Guardando..."
                         : "Modo local"}
                     </span>
                   </div>
@@ -121,8 +135,8 @@ export function Header({
               </div>
             </div>
 
-            {/* View Mode Toggle, Year Selector & Action Buttons */}
-            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+            {/* View Mode Toggle, Save Button, Year Selector & Actions */}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
               {/* Hidden File Input for JSON import */}
               <input
                 ref={fileInputRef}
@@ -132,43 +146,85 @@ export function Header({
                 onChange={handleFileChange}
               />
 
+              {/* Botón Principal: GUARDAR CAMBIOS */}
+              <Button
+                size="sm"
+                variant={hasUnsavedChanges ? "emerald" : "outline"}
+                disabled={isSaving}
+                onClick={onSaveChanges}
+                className={`gap-1.5 h-8 px-3 text-xs font-bold transition-all shadow-sm ${
+                  hasUnsavedChanges
+                    ? "ring-2 ring-emerald-500/50 animate-bounce duration-1000"
+                    : "border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+                }`}
+                title="Guarda los cambios para que persistan para el inquilino y otros usuarios en data/payments.json"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Guardando...</span>
+                  </>
+                ) : hasUnsavedChanges ? (
+                  <>
+                    <Save className="h-3.5 w-3.5" />
+                    <span>Guardar Cambios</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>Guardado</span>
+                  </>
+                )}
+              </Button>
+
+              {/* Botón: Sincronizar / Recargar del Servidor */}
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 text-slate-500 hover:text-slate-800 border-slate-300 dark:border-slate-700"
+                title="Recargar datos más recientes del servidor"
+                onClick={onRefreshFromServer}
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+              </Button>
+
               {/* View Mode Switcher */}
-              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-inner">
+              <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-inner">
                 <button
                   onClick={() => onViewModeChange("admin")}
-                  className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                  className={`flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
                     viewMode === "admin"
                       ? "bg-white text-slate-900 shadow-sm font-bold dark:bg-slate-900 dark:text-white"
                       : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
                   }`}
-                  title="Vista completa con controles y edición"
+                  title="Panel de administración con edición"
                 >
-                  <LayoutDashboard className="h-3.5 w-3.5" />
+                  <LayoutDashboard className="h-3 w-3" />
                   <span>Admin</span>
                 </button>
                 <button
                   onClick={() => onViewModeChange("compact")}
-                  className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                  className={`flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
                     viewMode === "compact"
                       ? "bg-emerald-600 text-white shadow-sm font-bold"
                       : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
                   }`}
-                  title="Vista compacta para mostrar al inquilino"
+                  title="Vista para el inquilino"
                 >
-                  <Eye className="h-3.5 w-3.5" />
-                  <span>Vista Inquilino</span>
+                  <Eye className="h-3 w-3" />
+                  <span>Inquilino</span>
                 </button>
               </div>
 
               {/* Year Selector */}
-              <div className="flex items-center bg-slate-100/90 dark:bg-slate-800/90 p-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-inner">
-                <Calendar className="h-3.5 w-3.5 ml-2 mr-1 text-slate-400" />
-                <div className="flex space-x-1">
+              <div className="flex items-center bg-slate-100/90 dark:bg-slate-800/90 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 shadow-inner">
+                <Calendar className="h-3.5 w-3.5 ml-1.5 mr-0.5 text-slate-400" />
+                <div className="flex space-x-0.5">
                   {availableYears.map((yr) => (
                     <button
                       key={yr}
                       onClick={() => onYearChange(yr)}
-                      className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                      className={`px-2 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
                         currentYear === yr
                           ? "bg-white text-emerald-700 shadow-sm font-bold dark:bg-slate-900 dark:text-emerald-400"
                           : "text-slate-600 hover:text-slate-900 hover:bg-white/50 dark:text-slate-400 dark:hover:text-slate-200"
@@ -185,11 +241,11 @@ export function Header({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-1.5 font-medium border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 h-8 text-xs"
+                  className="gap-1 font-medium border-slate-300 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 h-8 text-xs px-2.5"
                   onClick={() => setShowExportMenu(!showExportMenu)}
                 >
                   <Download className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span>Exportar / Importar</span>
+                  <span className="hidden sm:inline">Archivos</span>
                   <ChevronDown className="h-3 w-3 text-slate-400" />
                 </Button>
 
@@ -259,11 +315,11 @@ export function Header({
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1.5 font-medium border-slate-300 text-slate-700 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-rose-950/30 dark:hover:text-rose-400 h-8 text-xs"
+                className="gap-1 font-medium border-slate-300 text-slate-700 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-rose-950/30 dark:hover:text-rose-400 h-8 text-xs px-2.5"
                 onClick={() => setShowResetModal(true)}
               >
                 <RotateCcw className="h-3 w-3" />
-                <span>Restablecer</span>
+                <span className="hidden sm:inline">Restablecer</span>
               </Button>
             </div>
           </div>

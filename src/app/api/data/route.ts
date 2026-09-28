@@ -4,6 +4,9 @@ import path from "path";
 import { StorageState } from "@/lib/types";
 import { getDefaultDashboardState } from "@/lib/initial-data";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const DATA_DIR = path.join(process.cwd(), "data");
 const DATA_FILE = path.join(DATA_DIR, "payments.json");
 
@@ -25,16 +28,28 @@ async function ensureDataFile(): Promise<StorageState> {
 
 /**
  * GET /api/data
- * Returns the stored data from data/payments.json
+ * Returns the stored data from data/payments.json with strict no-cache headers.
  */
 export async function GET() {
   try {
     const data = await ensureDataFile();
-    return NextResponse.json({ success: true, data });
-  } catch (error) {
+    return NextResponse.json(
+      { success: true, data },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      }
+    );
+  } catch {
     return NextResponse.json(
       { success: false, error: "Error al leer el archivo de persistencia JSON" },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      }
     );
   }
 }
@@ -57,11 +72,18 @@ export async function POST(request: Request) {
     await fs.mkdir(DATA_DIR, { recursive: true });
     await fs.writeFile(DATA_FILE, JSON.stringify(payload, null, 2), "utf-8");
 
-    return NextResponse.json({
-      success: true,
-      message: "Persistencia guardada exitosamente en data/payments.json",
-    });
-  } catch (error) {
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Persistencia guardada exitosamente en data/payments.json",
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      }
+    );
+  } catch {
     return NextResponse.json(
       { success: false, error: "Error al guardar en el archivo JSON" },
       { status: 500 }
